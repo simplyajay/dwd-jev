@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  administrator
+  user
+
+  @@map("role")
+}
+
+enum Status {
+  active
+  inactive
+
+  @@map("status")
+}
+
+enum EntryType {
+  debit
+  credit
+
+  @@map("entry_type")
+}
+
+enum JournalType {
+  crj
+  cdj
+  gj
+  ckdj
+  msij
+
+  @@map("journal_type")
+}
+
+enum DocumentCode {
+  po
+  bur
+  or
+  inv
+  ar
+  rcd
+  ris
+  lr
+
+  @@map("document_code")
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  firstName       String   @map("first_name")
+  middleName      String?  @map("middle_name")
+  lastName        String   @map("last_name")
+  username        String   @unique
+  password        String
+  email           String?  @unique
+  role            Role
+  position        String
+  status          Status
+  // True only for the seed-created bootstrap administrator -- never
+  // client-settable, always false for every user created through the app.
+  isSystemAccount Boolean  @default(false) @map("is_system_account")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  pendingUser     PendingUser?
+  createdJevs     Jev[]        @relation("JevCreatedBy")
+  lastUpdatedJevs Jev[]        @relation("JevLastUpdatedBy")
+  deletedJevs     Jev[]        @relation("JevDeletedBy")
+
+  @@map("users")
+}
+
+model PendingUser {
+  userId    String   @id @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("pending_users")
+}
+
+model Jev {
+  id            String      @id @default(uuid()) @db.Uuid
+  journalType   JournalType @map("journal_type")
+  jevNumber     String      @map("jev_number")
+  jevDate       DateTime    @map("jev_date") @db.Date
+  dvNumber      String?     @map("dv_number")
+  dvDate        DateTime?   @map("dv_date") @db.Date
+  adaNumber     String?     @map("ada_number")
+  adaDate       DateTime?   @map("ada_date") @db.Date
+  checkNumber   String?     @map("check_number")
+  checkDate     DateTime?   @map("check_date") @db.Date
+  payeeName     String?     @map("payee_name")
+  description   String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  createdBy     String      @map("created_by") @db.Uuid
+  lastUpdatedAt DateTime    @default(now()) @updatedAt @map("last_updated_at")
+  lastUpdatedBy String      @map("last_updated_by") @db.Uuid
+  deletedAt     DateTime?   @map("deleted_at")
+  deletedBy     String?     @map("deleted_by") @db.Uuid
+
+  createdByUser     User  @relation("JevCreatedBy", fields: [createdBy], references: [id])
+  lastUpdatedByUser User  @relation("JevLastUpdatedBy", fields: [lastUpdatedBy], references: [id])
+  deletedByUser     User? @relation("JevDeletedBy", fields: [deletedBy], references: [id])
+
+  accountingEntries         AccountingEntry[]
+  supportingDocumentEntries SupportingDocumentEntry[]
+
+  @@map("journal_entry_voucher")
+}
+
+model AccountingEntry {
+  id          String    @id @default(uuid()) @db.Uuid
+  jevId       String    @map("jev_id") @db.Uuid
+  sortOrder   Int       @map("sort_order")
+  accountCode String    @map("account_code")
+  accountName String    @map("account_name")
+  entryType   EntryType @map("entry_type")
+  amount      BigInt
+
+  jev                     Jev                     @relation(fields: [jevId], references: [id], onDelete: Cascade)
+  externalDocumentEntries ExternalDocumentEntry[]
+
+  @@map("accounting_entries")
+}
+
+model SupportingDocumentEntry {
+  id             String       @id @default(uuid()) @db.Uuid
+  jevId          String       @map("jev_id") @db.Uuid
+  sortOrder      Int          @map("sort_order")
+  documentNumber String       @map("document_number")
+  documentCode   DocumentCode @map("document_code")
+  documentName   String       @map("document_name")
+  documentDate   DateTime     @map("document_date") @db.Date
+
+  jev Jev @relation(fields: [jevId], references: [id], onDelete: Cascade)
+
+  @@map("supporting_document_entries")
+}
+
+model ExternalDocumentEntry {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountingEntryId String    @map("accounting_entry_id") @db.Uuid
+  documentNumber    String    @map("document_number")
+  documentName      String    @map("document_name")
+  entryType         EntryType @map("entry_type")
+  amount            BigInt
+
+  accountingEntry AccountingEntry @relation(fields: [accountingEntryId], references: [id], onDelete: Cascade)
+
+  @@map("external_document_entries")
+}
+
+model ChartOfAccounts {
+  id          String  @id @default(uuid()) @db.Uuid
+  accountCode String  @map("account_code")
+  accountName String  @map("account_name")
+  /// General Services Office inventory code (typically 3 digits); used by the desktop app to filter accounts for GSO-related entries.
+  gso         String?
+
+  @@map("chart_of_accounts")
+}
