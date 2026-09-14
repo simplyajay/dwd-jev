@@ -1,5 +1,6 @@
 .claude/settings.local.json
 
-apps/backend/.env
+apps/backend/.env.prod
+apps/backend/.env.dev
 node_modules
 dist

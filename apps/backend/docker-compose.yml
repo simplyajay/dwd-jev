@@ -4,3 +4,18 @@ services:
     ports:
       - "6379:6379"
     restart: unless-stopped
+
+  postgres:
+    image: postgres:18-alpine
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dwd-jev-dev
+      POSTGRES_PASSWORD: dwd-jev-dev
+      POSTGRES_DB: dwd-jev
+    volumes:
+      - postgres_data:/var/lib/postgresql
+
+volumes:
+  postgres_data:

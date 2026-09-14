@@ -1,5 +1,10 @@
 import "dotenv/config";
 import { z } from "zod";
+import { config } from "dotenv";
+
+const nodeEnv = process.env.NODE_ENV ?? "development";
+
+config({ path: nodeEnv === "production" ? ".env.prod" : ".env.dev" });
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
