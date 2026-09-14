@@ -10,5 +10,10 @@ const loginRateLimit = rateLimit({ windowSeconds: 60, max: 5, keyPrefix: "login"
 const refreshRateLimit = rateLimit({ windowSeconds: 60, max: 10, keyPrefix: "refresh" });
 
 authRouter.post("/login", loginRateLimit, validateBody(LoginInputSchema), login);
-authRouter.post("/refresh", refreshRateLimit, validateBody(RefreshTokenInputSchema), refresh);
+authRouter.post(
+  "/refresh",
+  refreshRateLimit,
+  validateBody(RefreshTokenInputSchema),
+  refresh,
+);
 authRouter.post("/logout", validateBody(RefreshTokenInputSchema), logout);

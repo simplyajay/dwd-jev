@@ -1,12 +1,15 @@
 import { randomBytes } from "node:crypto";
-import type { Redis } from "ioredis";
 import { UnauthorizedError } from "../errors/AppError.js";
-import type { IUserRepository } from "../repositories/UserRepository.js";
 import { signAccessToken } from "../utils/jwt.js";
+import type { Redis } from "ioredis";
+import type { IUserRepository } from "../repositories/UserRepository.js";
 
 const REFRESH_TOKEN_TTL_SECONDS = 28800; // 8 hours
 
 const refreshTokenKey = (token: string): string => `refresh:${token}`;
+
+const userActiveTokenKey = (userId: string): string =>
+  `user:${userId}:active_refresh_token`;
 
 export interface RotatedTokens {
   accessToken: string;
@@ -17,13 +20,20 @@ export class RefreshTokenService {
   constructor(private readonly userRepository: IUserRepository) {}
 
   async issueRefreshToken(userId: string, redis: Redis): Promise<string> {
+    const existingToken = await redis.get(userActiveTokenKey(userId));
+
+    if (existingToken) await redis.del(refreshTokenKey(existingToken));
+
     const token = randomBytes(32).toString("hex");
     await redis.set(refreshTokenKey(token), userId, "EX", REFRESH_TOKEN_TTL_SECONDS);
+    await redis.set(userActiveTokenKey(userId), token, "EX", REFRESH_TOKEN_TTL_SECONDS);
     return token;
   }
 
   async revokeRefreshToken(token: string, redis: Redis): Promise<void> {
+    const userId = await redis.get(refreshTokenKey(token));
     await redis.del(refreshTokenKey(token));
+    if (userId) await redis.del(userActiveTokenKey(userId));
   }
 
   async rotateRefreshToken(oldToken: string, redis: Redis): Promise<RotatedTokens> {

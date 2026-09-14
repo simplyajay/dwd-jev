@@ -1,13 +1,14 @@
+import { signAccessToken } from "../utils/jwt.js";
 import type { Redis } from "ioredis";
 import type { LoginInput } from "@dwd-jev/shared";
-import { signAccessToken } from "../utils/jwt.js";
 import type { RefreshTokenService, RotatedTokens } from "./RefreshTokenService.js";
-import type { SafeUser, UserService } from "./UserService.js";
+import type { UserService } from "./UserService.js";
+import type { SafeUserType } from "@dwd-jev/shared";
 
 export interface LoginResult {
   accessToken: string;
   refreshToken: string;
-  user: SafeUser;
+  user: SafeUserType;
 }
 
 export class AuthService {
