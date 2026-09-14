@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { boolean, z } from "zod";
 import { RoleSchema, StatusSchema } from "../enums.js";
 
 export const UserSchema = z.object({
@@ -13,10 +13,13 @@ export const UserSchema = z.object({
   position: z.string(),
   status: StatusSchema,
   createdAt: z.coerce.date(),
+  isSystemAccount: z.boolean(),
+  approvedBy: z.uuid().nullable(),
+  approvedAt: z.coerce.date().nullable(),
 });
-export type User = z.infer<typeof UserSchema>;
 
-export const CreateUserInputSchema = z.object({
+// used by both frontend and repository
+export const CreateUserSchema = z.object({
   firstName: z.string().min(1),
   middleName: z.string().nullish(),
   lastName: z.string().min(1),
@@ -25,22 +28,18 @@ export const CreateUserInputSchema = z.object({
   email: z.email().nullish(),
   position: z.string().min(1),
 });
-export type CreateUserInput = z.infer<typeof CreateUserInputSchema>;
 
 export const LoginInputSchema = z.object({
   username: z.string().min(1, "Please enter your username."),
   password: z.string().min(1, "Please enter your password."),
 });
+
+export type UserType = z.infer<typeof UserSchema>;
+export type SafeUserType = Omit<UserType, "password">;
+export type CreateUserInput = z.infer<typeof CreateUserSchema>;
 export type LoginInput = z.infer<typeof LoginInputSchema>;
 
 export const RefreshTokenInputSchema = z.object({
   refreshToken: z.string().min(1, "Refresh token is required."),
 });
 export type RefreshTokenInput = z.infer<typeof RefreshTokenInputSchema>;
-
-export const PendingUserSchema = z.object({
-  userId: z.uuid(),
-  createdAt: z.coerce.date(),
-});
-
-export type PendingUser = z.infer<typeof PendingUserSchema>;

@@ -27,8 +27,8 @@ const main = async () => {
       username: "administrator",
       password: hashedPassword,
       role: "administrator",
-      status: "active",
       position: "System",
+      status: "active",
       isSystemAccount: true,
     },
   });

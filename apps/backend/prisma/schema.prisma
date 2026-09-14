@@ -15,6 +15,7 @@ enum Role {
 }
 
 enum Status {
+  awaiting_approval
   active
   inactive
 
@@ -52,36 +53,30 @@ enum DocumentCode {
 }
 
 model User {
-  id              String   @id @default(uuid()) @db.Uuid
-  firstName       String   @map("first_name")
-  middleName      String?  @map("middle_name")
-  lastName        String   @map("last_name")
-  username        String   @unique
+  id              String    @id @default(uuid()) @db.Uuid
+  firstName       String    @map("first_name")
+  middleName      String?   @map("middle_name")
+  lastName        String    @map("last_name")
+  username        String    @unique
   password        String
-  email           String?  @unique
-  role            Role
+  email           String?   @unique
+  role            Role      @default(user)
   position        String
-  status          Status
-  // True only for the seed-created bootstrap administrator -- never
-  // client-settable, always false for every user created through the app.
-  isSystemAccount Boolean  @default(false) @map("is_system_account")
-  createdAt       DateTime @default(now()) @map("created_at")
+  status          Status    @default(awaiting_approval)
+  isSystemAccount Boolean   @default(false) @map("is_system_account")
+  approvedBy      String?   @map("approved_by") @db.Uuid
+  // Nullable while status is awaiting_approval; set when an administrator
+  // approves the account.
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
 
-  pendingUser     PendingUser?
-  createdJevs     Jev[]        @relation("JevCreatedBy")
-  lastUpdatedJevs Jev[]        @relation("JevLastUpdatedBy")
-  deletedJevs     Jev[]        @relation("JevDeletedBy")
+  approvedByUser  User?  @relation("UserApprovedBy", fields: [approvedBy], references: [id])
+  approvedUsers   User[] @relation("UserApprovedBy")
+  createdJevs     Jev[]  @relation("JevCreatedBy")
+  lastUpdatedJevs Jev[]  @relation("JevLastUpdatedBy")
+  deletedJevs     Jev[]  @relation("JevDeletedBy")
 
   @@map("users")
-}
-
-model PendingUser {
-  userId    String   @id @map("user_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("pending_users")
 }
 
 model Jev {

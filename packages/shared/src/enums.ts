@@ -3,7 +3,7 @@ import { z } from "zod";
 export const RoleSchema = z.enum(["administrator", "user"]);
 export type Role = z.infer<typeof RoleSchema>;
 
-export const StatusSchema = z.enum(["active", "inactive"]);
+export const StatusSchema = z.enum(["awaiting_approval", "active", "inactive"]);
 export type Status = z.infer<typeof StatusSchema>;
 
 export const EntryTypeSchema = z.enum(["debit", "credit"]);

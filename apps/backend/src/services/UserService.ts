@@ -1,12 +1,15 @@
-import type { User } from "@prisma/client";
-import type { CreateUserInput, LoginInput, Role, Status } from "@dwd-jev/shared";
-import { ConflictError, UnauthorizedError } from "../errors/AppError.js";
-import type { IUserRepository } from "../repositories/UserRepository.js";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+} from "../errors/AppError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
+import type { UserType, SafeUserType } from "@dwd-jev/shared";
+import type { CreateUserInput, LoginInput } from "@dwd-jev/shared";
+import type { IUserRepository } from "../repositories/UserRepository.js";
 
-export type SafeUser = Omit<User, "password">;
-
-const toSafeUser = (user: User): SafeUser => {
+const toSafeUser = (user: UserType): SafeUserType => {
   const { password: _password, ...safeUser } = user;
   return safeUser;
 };
@@ -14,7 +17,7 @@ const toSafeUser = (user: User): SafeUser => {
 export class UserService {
   constructor(private readonly userRepository: IUserRepository) {}
 
-  async createUser(input: CreateUserInput): Promise<SafeUser> {
+  async createUser(input: CreateUserInput): Promise<SafeUserType> {
     const existingUsername = await this.userRepository.findByUsername(input.username);
     if (existingUsername) {
       throw new ConflictError("Username is already taken.", "username");
@@ -29,6 +32,7 @@ export class UserService {
 
     const hashedPassword = await hashPassword(input.password);
 
+    //status, role, isSystemAccount, and createAt is not included because it has default values
     const user = await this.userRepository.create({
       firstName: input.firstName,
       middleName: input.middleName ?? null,
@@ -36,16 +40,30 @@ export class UserService {
       username: input.username,
       password: hashedPassword,
       email: input.email ?? null,
-      role: "user",
       position: input.position,
-      status: "inactive",
     });
 
     return toSafeUser(user);
   }
 
+  async getUserById(id: string): Promise<SafeUserType | null> {
+    const user = await this.userRepository.findById(id);
+
+    if (!user) throw new NotFoundError("User not found.");
+
+    return toSafeUser(user);
+  }
+
+  async getPendingUsers(): Promise<SafeUserType[]> {
+    return await this.userRepository.findUsers(true);
+  }
+
+  async getApprovedUsers(): Promise<SafeUserType[]> {
+    return await this.userRepository.findUsers();
+  }
+
   // Verifies credentials only -- token issuance (access + refresh) is AuthService's job
-  async verifyCredentials(input: LoginInput): Promise<SafeUser> {
+  async verifyCredentials(input: LoginInput): Promise<SafeUserType> {
     const user = await this.userRepository.findByUsername(input.username);
     if (!user) {
       throw new UnauthorizedError("Invalid username or password.");
@@ -56,8 +74,13 @@ export class UserService {
       throw new UnauthorizedError("Invalid username or password.");
     }
 
-    if (user.status !== "active") {
-      throw new UnauthorizedError("Account is inactive. Please contact administrator.");
+    if (user.status === "awaiting_approval")
+      throw new ForbiddenError("Your account is awaiting administrator approval.");
+
+    if (user.status === "inactive") {
+      throw new UnauthorizedError(
+        "Account is inactive. Please contact an administrator.",
+      );
     }
 
     return toSafeUser(user);
