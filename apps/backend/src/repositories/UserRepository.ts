@@ -1,6 +1,13 @@
 import { prisma } from "../lib/prisma.js";
+import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import { SafeUserType } from "@dwd-jev/shared";
 import type { CreateUserInput, UserType } from "@dwd-jev/shared";
+
+// Backstop for the race the UserService pre-check can't close (see createUser).
+const USER_UNIQUE_FIELDS: UniqueFieldMap = {
+  username: { label: "Username" },
+  email: { label: "Email" },
+};
 
 export interface IUserRepository {
   findById(id: string): Promise<UserType | null>;
@@ -23,7 +30,6 @@ export class PrismaUserRepository implements IUserRepository {
     return prisma.user.findUnique({ where: { email } });
   }
 
-  //password excluded since this data will not be used for verification
   findUsers(isPending: boolean): Promise<SafeUserType[]> {
     return prisma.user.findMany({
       where: { status: isPending ? "awaiting_approval" : { not: "awaiting_approval" } },
@@ -47,6 +53,6 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   create(data: CreateUserInput): Promise<UserType> {
-    return prisma.user.create({ data });
+    return withUniqueConflict(USER_UNIQUE_FIELDS, () => prisma.user.create({ data }));
   }
 }
