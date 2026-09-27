@@ -42,12 +42,10 @@ export class RefreshTokenService {
       throw new UnauthorizedError("Refresh token is invalid or expired.");
     }
 
-    // Delete first -- a refresh token must never be usable twice, even if
-    // something below throws.
+    // Delete first -- a token must never be usable twice, even if this throws.
     await redis.del(refreshTokenKey(oldToken));
 
-    // Re-checked fresh from the DB (not cached in Redis) so a role change or
-    // deactivation takes effect on the next rotation, not just at next login.
+    // Fresh from the DB, not Redis, so a deactivation takes effect immediately.
     const user = await this.userRepository.findById(userId);
     if (!user || user.status !== "active") {
       throw new UnauthorizedError("Refresh token is invalid or expired.");

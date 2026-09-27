@@ -1,19 +1,52 @@
 import { z } from "zod";
-import { DocumentCodeSchema, EntryTypeSchema, JournalTypeSchema } from "../enums.js";
-import { AccountingEntrySchema } from "./accountingEntry.js";
-import { SupportingDocumentEntrySchema } from "./supportingDocumentEntry.js";
+import { JournalTypeSchema } from "../enums.js";
+import {
+  AccountingEntrySchema,
+  CreateAccountingEntryInputSchema,
+} from "./accountingEntry.js";
+import { toCents } from "./externalDocumentEntry.js";
+import {
+  CreateSupportingDocumentEntryInputSchema,
+  SupportingDocumentEntrySchema,
+} from "./supportingDocumentEntry.js";
+
+// ----- PAGINATION ------
+
+const PaginationInputSchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const JevByMonthInputSchema = PaginationInputSchema.extend({
+  year: z.coerce.number().int(),
+  // 1-indexed month; 0 means every month of the given year.
+  month: z.coerce.number().int().min(0).max(12),
+});
+
+export const JevByDateRangeInputSchema = PaginationInputSchema.extend({
+  // Plain calendar date, e.g. "2026-12-30" -- no time, no timezone offset.
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  searchKeyword: z.string().trim().min(1).optional(),
+});
+
+export type JevByMonthInput = z.infer<typeof JevByMonthInputSchema>;
+
+export type JevByDateRangeInput = z.infer<typeof JevByDateRangeInputSchema>;
+
+// ------- JEV -----------
 
 export const JevSchema = z.object({
   id: z.uuid(),
   journalType: JournalTypeSchema,
   jevNumber: z.string(),
-  jevDate: z.coerce.date(),
+  jevDate: z.iso.date(),
   dvNumber: z.string().nullable(),
-  dvDate: z.coerce.date().nullable(),
+  dvDate: z.iso.date().nullable(),
   adaNumber: z.string().nullable(),
-  adaDate: z.coerce.date().nullable(),
+  adaDate: z.iso.date().nullable(),
   checkNumber: z.string().nullable(),
-  checkDate: z.coerce.date().nullable(),
+  checkDate: z.iso.date().nullable(),
   payeeName: z.string().nullable(),
   description: z.string(),
   createdAt: z.coerce.date(),
@@ -27,111 +60,50 @@ export const JevSchema = z.object({
 });
 export type Jev = z.infer<typeof JevSchema>;
 
+export const JevListItemSchema = z.object({
+  id: z.uuid(),
+  jevNumber: z.string(),
+  journalType: JournalTypeSchema,
+  jevDate: z.iso.date(),
+});
+export type JevListItem = z.infer<typeof JevListItemSchema>;
+
+// ---- JEV INPUT ----
+
 const MIN_ACCOUNT_ROWS = 2;
 
-const AmountSchema = z.coerce.number().optional();
+// z.iso.date() rejects anything but "YYYY-MM-DD"; the transform then makes
+// it a Date, since Prisma requires a full ISO-8601 datetime string (not a
+// bare date) when a string is passed instead of a Date object.
+const dateOnlyInput = (message: string) =>
+  z.iso.date(message).transform((value) => new Date(value));
 
-// Cents are only used internally, for float-safe sum/equality checks below.
-function toCents(pesos: number): number {
-  return Math.round(pesos * 100);
-}
-
-const JevExternalDocumentSchema = z.object({
-  documentNumber: z.string(),
-  documentName: z.string(),
-  amount: AmountSchema,
-});
-
-const JevAccountingEntrySchema = z
-  .object({
-    accountCode: z.string().nonempty("Please enter account code."),
-    accountName: z.string().nonempty("Please enter account name."),
-    entryType: EntryTypeSchema.nullable(),
-    amount: AmountSchema,
-    externalDocuments: z.array(JevExternalDocumentSchema),
-  })
-  .superRefine((data, ctx) => {
-    const { entryType, amount, externalDocuments } = data;
-
-    if (entryType === null || amount === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["amount"],
-        message: "Enter debit or credit.",
-      });
-      return;
-    }
-
-    if (amount <= 0) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["amount"],
-        message: "Amount must be greater than 0.",
-      });
-      return;
-    }
-
-    if (externalDocuments.length === 0) return;
-
-    const hasIncompleteDetails = externalDocuments.some(
-      (ext) => !ext.documentNumber || !ext.documentName,
-    );
-
-    if (hasIncompleteDetails) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["externalDocuments"],
-        message: "Enter document details.",
-      });
-      return;
-    }
-
-    const externalDocumentsTotalCents = externalDocuments.reduce(
-      (sum, ext) => sum + toCents(ext.amount ?? 0),
-      0,
-    );
-
-    if (externalDocumentsTotalCents !== toCents(amount)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["externalDocuments"],
-        message: `External documents must total the account's ${entryType}.`,
-      });
-    }
-  });
-
-const JevSupportingDocumentSchema = z.object({
-  documentCode: DocumentCodeSchema,
-  documentNumber: z.string().nonempty("Enter document number."),
-  documentDate: z.coerce.date("Select date"),
-});
-
-const CkdjSupportingDocumentSchema = JevSupportingDocumentSchema.extend({
+const CkdjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
   documentCode: z.enum(["bur", "po", "inv", "ar", "or"], { error: "Select Document" }),
 });
 
-const CdjSupportingDocumentSchema = JevSupportingDocumentSchema.extend({
+const CdjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
   documentCode: z.enum(["bur"], { error: "Select Document" }),
 });
 
-const CrjSupportingDocumentSchema = JevSupportingDocumentSchema.extend({
+const CrjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
   documentCode: z.enum(["rcd"], { error: "Select Document" }),
 });
 
-const MsijSupportingDocumentSchema = JevSupportingDocumentSchema.extend({
+const MsijSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
   documentCode: z.enum(["ris"], { error: "Select Document" }),
 });
 
-const GjSupportingDocumentSchema = JevSupportingDocumentSchema.extend({
+const GjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
   documentCode: z.enum(["lr"], { error: "Select Document" }),
 });
 
 const JevBaseSchema = z.object({
   journalType: JournalTypeSchema,
   jevNumber: z.string().nonempty("Please enter JEV Number."),
-  jevDate: z.coerce.date("Select Date"),
+  jevDate: dateOnlyInput("Select Date"),
   accountingEntries: z
-    .array(JevAccountingEntrySchema)
+    .array(CreateAccountingEntryInputSchema)
     .min(MIN_ACCOUNT_ROWS, `Enter at least ${MIN_ACCOUNT_ROWS} accounts`),
   description: z.string().nonempty("Please enter description."),
 });
@@ -139,20 +111,20 @@ const JevBaseSchema = z.object({
 const CkdjJevSchema = JevBaseSchema.extend({
   journalType: z.literal("ckdj"),
   dvNumber: z.string().nonempty("Please enter DV number."),
-  dvDate: z.coerce.date("Select Date"),
+  dvDate: dateOnlyInput("Select Date"),
   payeeName: z.string().nonempty("Please enter Payee name."),
   checkNumber: z.string().nonempty("Please enter Check number."),
-  checkDate: z.coerce.date("Select Date"),
+  checkDate: dateOnlyInput("Select Date"),
   supportingDocuments: z.array(CkdjSupportingDocumentSchema).optional(),
 });
 
 const CdjJevSchema = JevBaseSchema.extend({
   journalType: z.literal("cdj"),
   dvNumber: z.string().nonempty("Please enter DV number."),
-  dvDate: z.coerce.date("Select Date"),
+  dvDate: dateOnlyInput("Select Date"),
   payeeName: z.string().nonempty("Please enter Payee name."),
   adaNumber: z.string().nonempty("Please enter ADA number."),
-  adaDate: z.coerce.date("Select Date"),
+  adaDate: dateOnlyInput("Select Date"),
   supportingDocuments: z.array(CdjSupportingDocumentSchema).optional(),
 });
 

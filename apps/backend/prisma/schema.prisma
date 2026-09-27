@@ -65,20 +65,22 @@ model User {
   status          Status    @default(awaiting_approval)
   isSystemAccount Boolean   @default(false) @map("is_system_account")
   approvedBy      String?   @map("approved_by") @db.Uuid
-  // Nullable while status is awaiting_approval; set when an administrator
-  // approves the account.
+  // Nullable while status is awaiting_approval; set on approval.
   approvedAt      DateTime? @map("approved_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
-  approvedByUser  User?  @relation("UserApprovedBy", fields: [approvedBy], references: [id])
-  approvedUsers   User[] @relation("UserApprovedBy")
-  createdJevs     Jev[]  @relation("JevCreatedBy")
-  lastUpdatedJevs Jev[]  @relation("JevLastUpdatedBy")
-  deletedJevs     Jev[]  @relation("JevDeletedBy")
+  approvedByUser  User?         @relation("UserApprovedBy", fields: [approvedBy], references: [id])
+  approvedUsers   User[]        @relation("UserApprovedBy")
+  createdJevs     Jev[]         @relation("JevCreatedBy")
+  lastUpdatedJevs Jev[]         @relation("JevLastUpdatedBy")
+  deletedJevs     Jev[]         @relation("JevDeletedBy")
+  jevRevisions    JevRevision[] @relation("JevRevisionUpdatedBy")
 
   @@map("users")
 }
 
+// jev_number/dv_number/ada_number/check_number are unique only among
+// non-deleted rows, via raw-SQL partial indexes (add_jev_unique_document_numbers).
 model Jev {
   id            String      @id @default(uuid()) @db.Uuid
   journalType   JournalType @map("journal_type")
@@ -105,8 +107,23 @@ model Jev {
 
   accountingEntries         AccountingEntry[]
   supportingDocumentEntries SupportingDocumentEntry[]
+  revisions                 JevRevision[]
 
   @@map("journal_entry_voucher")
+}
+
+model JevRevision {
+  id         String   @id @default(uuid()) @db.Uuid
+  jevId      String   @map("jev_id") @db.Uuid
+  beforeData Json     @map("before_data")
+  afterData  Json     @map("after_data")
+  updatedBy  String   @map("updated_by") @db.Uuid
+  updatedAt  DateTime @default(now()) @map("updated_at")
+
+  jev           Jev  @relation(fields: [jevId], references: [id], onDelete: Cascade)
+  updatedByUser User @relation("JevRevisionUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("jev_revisions")
 }
 
 model AccountingEntry {

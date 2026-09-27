@@ -7,9 +7,12 @@ export const validateBody =
   (req, _res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      next(new ValidationError(result.error.issues.map((issue) => issue.message).join(", ")));
+      next(
+        new ValidationError(result.error.issues.map((issue) => issue.message).join(", ")),
+      );
       return;
     }
+
     req.body = result.data;
     next();
   };

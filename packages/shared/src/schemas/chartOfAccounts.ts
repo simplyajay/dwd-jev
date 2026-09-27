@@ -8,8 +8,7 @@ export const ChartOfAccountsSchema = z.object({
 });
 export type ChartOfAccounts = z.infer<typeof ChartOfAccountsSchema>;
 
-// A single row from the CSV import. No id — the whole table gets replaced,
-// not merged, so rows are never individually addressed.
+// A CSV import row -- no id, since the whole table is replaced, not merged.
 const ChartOfAccountsRowSchema = z.object({
   accountCode: z.string().min(1),
   accountName: z.string().min(1),

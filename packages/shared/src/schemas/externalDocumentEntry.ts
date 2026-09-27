@@ -11,11 +11,18 @@ export const ExternalDocumentEntrySchema = z.object({
 });
 export type ExternalDocumentEntry = z.infer<typeof ExternalDocumentEntrySchema>;
 
-// accountingEntryId is supplied by the route, not the body.
+// Cents are only used internally, for float-safe sum/equality checks.
+export function toCents(pesos: number): number {
+  return Math.round(pesos * 100);
+}
+
+export const AmountSchema = z.coerce.number().optional();
+
+// accountingEntryId comes from the route, not the body; entryType is
+// inherited from the parent accounting entry, never supplied by the client.
 export const CreateExternalDocumentEntryInputSchema = z.object({
-  documentNumber: z.string().min(1),
-  documentName: z.string().min(1),
-  entryType: EntryTypeSchema,
-  amount: z.coerce.bigint().positive(),
+  documentNumber: z.string(),
+  documentName: z.string(),
+  amount: AmountSchema,
 });
 export type CreateExternalDocumentEntryInput = z.infer<typeof CreateExternalDocumentEntryInputSchema>;

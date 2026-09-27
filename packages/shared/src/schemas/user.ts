@@ -18,7 +18,6 @@ export const UserSchema = z.object({
   approvedAt: z.coerce.date().nullable(),
 });
 
-// used by both frontend and repository
 export const CreateUserSchema = z.object({
   firstName: z.string().min(1),
   middleName: z.string().nullish(),

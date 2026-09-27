@@ -1,8 +1,6 @@
 import { redis } from "../lib/redis.js";
 
-// Redis is a convenience, not a dependency -- any failure here falls back to
-// the caller's fetcher instead of failing the request.
-
+// Redis is a convenience, not a dependency -- failures fall back to fetcher.
 export const getOrSet = async <T>(
   key: string,
   ttlSeconds: number,
@@ -36,8 +34,7 @@ export const invalidate = async (key: string): Promise<void> => {
   }
 };
 
-// Pattern-based bulk invalidation (e.g. "user:*") via SCAN, not KEYS -- KEYS
-// blocks Redis for the duration of the scan on large keyspaces.
+// SCAN, not KEYS -- KEYS blocks Redis for the duration on large keyspaces.
 export const invalidatePattern = async (pattern: string): Promise<void> => {
   try {
     const keysToDelete: string[] = [];

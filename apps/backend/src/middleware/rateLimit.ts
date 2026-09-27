@@ -8,9 +8,8 @@ interface RateLimitOptions {
   keyPrefix: string;
 }
 
-// Fixed-window counter per IP. Fails open (allows the request) if Redis is
-// unreachable -- same philosophy as utils/cache.ts: Redis is a same-host,
-// ephemeral, best-effort dependency, never a hard gate on auth.
+// Fixed-window counter per IP. Fails open if Redis is unreachable -- same
+// best-effort philosophy as utils/cache.ts.
 export const rateLimit = ({ windowSeconds, max, keyPrefix }: RateLimitOptions): RequestHandler => {
   return async (req, _res, next) => {
     const key = `ratelimit:${keyPrefix}:${req.ip ?? "unknown"}`;

@@ -1,4 +1,5 @@
 export * from "./enums.js";
+export * from "./pagination.js";
 export * from "./schemas/user.js";
 export * from "./schemas/chartOfAccounts.js";
 export * from "./schemas/jev.js";

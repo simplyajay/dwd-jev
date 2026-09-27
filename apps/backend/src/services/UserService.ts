@@ -32,7 +32,6 @@ export class UserService {
 
     const hashedPassword = await hashPassword(input.password);
 
-    //status, role, isSystemAccount, and createAt is not included because it has default values
     const user = await this.userRepository.create({
       firstName: input.firstName,
       middleName: input.middleName ?? null,
@@ -62,7 +61,7 @@ export class UserService {
     return await this.userRepository.findUsers();
   }
 
-  // Verifies credentials only -- token issuance (access + refresh) is AuthService's job
+  // Verifies credentials only -- token issuance is AuthService's job.
   async verifyCredentials(input: LoginInput): Promise<SafeUserType> {
     const user = await this.userRepository.findByUsername(input.username);
     if (!user) {

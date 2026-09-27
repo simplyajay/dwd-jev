@@ -10,8 +10,7 @@ declare global {
   }
 }
 
-// Not mounted globally -- createUser/login must stay reachable without a
-// token. Apply this per-route to whatever needs to be authenticated.
+// Not mounted globally -- createUser/login must stay reachable without a token.
 export const authenticate: RequestHandler = (req, _res, next) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {

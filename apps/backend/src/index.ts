@@ -17,6 +17,10 @@ app.use("/api", router);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
+app.set("json replacer", (_key: string, value: unknown) =>
+  typeof value === "bigint" ? value.toString() : value,
+);
+
 app.listen(env.PORT, () => {
   console.log(`Server listening on port ${env.PORT}`);
 });
