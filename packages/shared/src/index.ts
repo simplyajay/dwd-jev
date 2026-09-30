@@ -7,3 +7,4 @@ export * from "./schemas/accountingEntry.js";
 export * from "./schemas/supportingDocumentEntry.js";
 export * from "./schemas/externalDocumentEntry.js";
 export * from "./schemas/auditLog.js";
+export * from "./diffJev.js";
