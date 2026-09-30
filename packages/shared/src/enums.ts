@@ -33,3 +33,11 @@ export const DOCUMENT_CODE_LABELS: Record<DocumentCode, string> = {
   ris: "Requisition and Issue Slip",
   lr: "Liquidation Report",
 };
+
+export const AuditActionSchema = z.enum(["create", "update", "delete"]);
+export type AuditAction = z.infer<typeof AuditActionSchema>;
+
+// Not a DB enum (see AuditLog in schema.prisma) -- extend this array when a
+// new document type (trial_balance, journal, general_ledger) is added.
+export const DocumentTypeSchema = z.enum(["jev"]);
+export type DocumentType = z.infer<typeof DocumentTypeSchema>;

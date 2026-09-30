@@ -52,6 +52,14 @@ enum DocumentCode {
   @@map("document_code")
 }
 
+enum AuditAction {
+  create
+  update
+  delete
+
+  @@map("audit_action")
+}
+
 model User {
   id              String    @id @default(uuid()) @db.Uuid
   firstName       String    @map("first_name")
@@ -166,6 +174,24 @@ model ExternalDocumentEntry {
   accountingEntry AccountingEntry @relation(fields: [accountingEntryId], references: [id], onDelete: Cascade)
 
   @@map("external_document_entries")
+}
+
+// Standalone activity feed -- no relations. documentType is a plain String,
+// not an enum, since new document types (trial_balance, journal, general
+// ledger) will be added later and a String avoids an enum-alter migration
+// each time. documentId has no FK (it's polymorphic: it points at the
+// document's own table for create/delete, but at that document's own
+// revision table for update -- resolved in app code via (documentType,
+// action), never joined at the DB level).
+model AuditLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  documentType String      @map("document_type")
+  documentId   String      @map("document_id") @db.Uuid
+  action       AuditAction
+  description  String
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@map("audit_logs")
 }
 
 model ChartOfAccounts {
