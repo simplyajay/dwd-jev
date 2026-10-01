@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window. The HTTP scope is added at runtime in src/lib.rs.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-get-api-base-url",
+    "allow-save-refresh-token",
+    "allow-load-refresh-token",
+    "allow-clear-refresh-token"
+  ]
+}
