@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "core:window:allow-set-theme",
     "allow-get-api-base-url",
     "allow-save-refresh-token",
     "allow-load-refresh-token",

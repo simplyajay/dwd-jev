@@ -3,7 +3,7 @@
 /// mandatory for release builds.
 pub const API_BASE_URL: &str = match option_env!("DWD_JEV_API_URL") {
     Some(url) => url,
-    None => "http://localhost:3000",
+    None => "http://localhost:3456",
 };
 
 /// Service name for Credential Manager entries -- matches the bundle identifier.
