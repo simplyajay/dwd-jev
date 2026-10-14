@@ -1,0 +1,22 @@
+{
+  // Biome is this app's formatter and linter (see ../biome.json). These are
+  // language-specific on purpose: a personal "[typescript]" formatter setting
+  // would otherwise win over a plain "editor.defaultFormatter".
+  //
+  // They apply when apps/desktop is a workspace folder -- open
+  // dwd-jev.code-workspace, or open apps/desktop directly. Opening only the
+  // repo root does not pick this file up.
+  "biome.requireConfiguration": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports.biome": "explicit"
+  },
+  "[typescript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[typescriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[json]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[css]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[tailwindcss]": { "editor.defaultFormatter": "biomejs.biome" }
+}

@@ -1,0 +1,13 @@
+{
+  // Open this instead of the repo folder (File > Open Workspace from File).
+  // The whole repo stays visible, and apps/desktop becomes its own workspace
+  // folder so the Biome extension finds its binary (apps/desktop/node_modules)
+  // and config (apps/desktop/biome.json). Files outside apps/desktop keep
+  // whatever formatter you use elsewhere.
+  "folders": [{ "name": "dwd-jev", "path": "../.." }, { "name": "desktop", "path": "." }],
+  "settings": {
+    // Biome only runs in folders that have a biome.json, i.e. not the repo root.
+    "biome.requireConfiguration": true,
+    "biome.suggestInstallingGlobally": false
+  }
+}
