@@ -47,6 +47,10 @@ export type ActiveStatus = Exclude<UserType["status"], "awaiting_approval">;
 
 export type ManagedUserData = { status: ActiveStatus } | { role: UserType["role"] };
 
+export type ProfileData = Pick<UserType, "firstName" | "middleName" | "lastName" | "position">;
+
+export type AccountData = Pick<UserType, "username" | "email"> & { password?: string };
+
 export type UserDetailRow = SafeUserType & { approvedByUser: ApproverRow | null };
 
 export interface IUserRepository {
@@ -66,6 +70,8 @@ export interface IUserRepository {
     data: ManagedUserData,
     onlyRegularUsers: boolean,
   ): Promise<UserDetailRow | null>;
+  updateProfile(id: string, data: ProfileData): Promise<UserDetailRow | null>;
+  updateAccount(id: string, data: AccountData): Promise<UserDetailRow | null>;
 }
 
 export class PrismaUserRepository implements IUserRepository {
@@ -161,4 +167,27 @@ export class PrismaUserRepository implements IUserRepository {
     );
   }
 
+  updateProfile(id: string, data: ProfileData): Promise<UserDetailRow | null> {
+    return nullIfNotFound(() =>
+      prisma.user.update({
+        where: { id },
+        data,
+        omit: { password: true },
+        include: APPROVER_INCLUDE,
+      }),
+    );
+  }
+
+  updateAccount(id: string, data: AccountData): Promise<UserDetailRow | null> {
+    return withUniqueConflict(USER_UNIQUE_FIELDS, () =>
+      nullIfNotFound(() =>
+        prisma.user.update({
+          where: { id },
+          data,
+          omit: { password: true },
+          include: APPROVER_INCLUDE,
+        }),
+      ),
+    );
+  }
 }

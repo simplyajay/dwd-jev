@@ -3,6 +3,7 @@ import {
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
+  ValidationError,
 } from "../errors/AppError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { formatFullName } from "../utils/fullName.js";
@@ -13,7 +14,12 @@ import type {
   UserSummary,
   UserType,
 } from "@dwd-jev/shared";
-import type { CreateUserInput, LoginInput } from "@dwd-jev/shared";
+import type {
+  CreateUserInput,
+  LoginInput,
+  UpdateAccountInput,
+  UpdateProfileInput,
+} from "@dwd-jev/shared";
 import type { Redis } from "ioredis";
 import type { RefreshTokenService } from "./RefreshTokenService.js";
 import type {
@@ -23,6 +29,8 @@ import type {
   UserDetailRow,
   UserSummaryRow,
 } from "../repositories/UserRepository.js";
+
+const reserved = ["administrator", "admin", "root"];
 
 const toSafeUser = (user: UserType): SafeUserType => {
   const { password: _password, ...safeUser } = user;
@@ -68,7 +76,7 @@ export class UserService {
 
     const user = await this.userRepository.create({
       firstName: input.firstName,
-      middleName: input.middleName ?? null,
+      middleName: input.middleName || null,
       lastName: input.lastName,
       username: input.username,
       password: hashedPassword,
@@ -185,6 +193,95 @@ export class UserService {
       );
     }
     return updated;
+  }
+
+  async updateProfile(userId: string, input: UpdateProfileInput): Promise<UserDetail> {
+    const current = await this.userRepository.findById(userId);
+    if (!current) throw new NotFoundError("User not found.");
+    if (current.isSystemAccount) {
+      throw new ForbiddenError(
+        "The system account's personal information cannot be changed.",
+      );
+    }
+
+    const user = await this.userRepository.updateProfile(userId, {
+      firstName: input.firstName,
+      middleName: input.middleName || null,
+      lastName: input.lastName,
+      position: input.position,
+    });
+    if (!user) throw new NotFoundError("User not found.");
+
+    return toUserDetail(user);
+  }
+
+  async updateAccount(
+    userId: string,
+    input: UpdateAccountInput,
+  ): Promise<{ user: UserDetail; passwordChanged: boolean }> {
+    const current = await this.userRepository.findWithPasswordById(userId);
+    if (!current) throw new NotFoundError("User not found.");
+
+    const isPasswordValid = await comparePassword(
+      input.currentPassword,
+      current.password,
+    );
+    if (!isPasswordValid) {
+      throw new ForbiddenError("Incorrect current password.", "currentPassword");
+    }
+
+    const email = input.email ?? null;
+
+    // The system account may only change its password.
+    if (current.isSystemAccount) {
+      if (input.username !== current.username) {
+        throw new ForbiddenError(
+          "The system account's username cannot be changed.",
+          "username",
+        );
+      }
+      if (email !== current.email) {
+        throw new ForbiddenError(
+          "The system account's email cannot be changed.",
+          "email",
+        );
+      }
+    }
+
+    if (
+      input.newPassword &&
+      (await comparePassword(input.newPassword, current.password))
+    ) {
+      throw new ValidationError(
+        "New password must be different from your current password.",
+        "newPassword",
+      );
+    }
+
+    if (input.username !== current.username) {
+      const forbidden = reserved.includes(input.username.toLocaleLowerCase());
+
+      if (forbidden) {
+        throw new ForbiddenError("You cannot use this username.", "username");
+      }
+
+      const existing = await this.userRepository.findByUsername(input.username);
+      if (existing) throw new ConflictError("Username is already taken.", "username");
+    }
+
+    if (email && email !== current.email) {
+      const existing = await this.userRepository.findByEmail(email);
+      if (existing) throw new ConflictError("Email is already in use.", "email");
+    }
+
+    const user = await this.userRepository.updateAccount(userId, {
+      username: input.username,
+      email,
+      ...(input.newPassword && { password: await hashPassword(input.newPassword) }),
+    });
+    if (!user) throw new NotFoundError("User not found.");
+
+    return { user: toUserDetail(user), passwordChanged: !!input.newPassword };
   }
 
   // Re-checks the admin in the DB (token role may be stale). 403, not 401, on a
