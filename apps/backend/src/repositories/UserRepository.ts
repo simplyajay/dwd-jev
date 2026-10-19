@@ -8,13 +8,48 @@ const USER_UNIQUE_FIELDS: UniqueFieldMap = {
   email: { label: "Email" },
 };
 
+const APPROVER_INCLUDE = {
+  approvedByUser: {
+    select: {
+      id: true,
+      firstName: true,
+      middleName: true,
+      lastName: true,
+      isSystemAccount: true,
+    },
+  },
+} as const;
+
+const SUMMARY_SELECT = {
+  id: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  position: true,
+  status: true,
+} as const;
+
+export type UserSummaryRow = Pick<
+  UserType,
+  "id" | "firstName" | "middleName" | "lastName" | "position" | "status"
+>;
+
+export type ApproverRow = Pick<
+  UserType,
+  "id" | "firstName" | "middleName" | "lastName" | "isSystemAccount"
+>;
+
+export type UserDetailRow = SafeUserType & { approvedByUser: ApproverRow | null };
+
 export interface IUserRepository {
   findById(id: string): Promise<SafeUserType | null>;
   findByUsername(username: string): Promise<SafeUserType | null>;
   findByEmail(email: string): Promise<SafeUserType | null>;
   findWithPasswordById(id: string): Promise<UserType | null>;
   findWithPasswordByUsername(username: string): Promise<UserType | null>;
-  findUsers(isPending?: boolean): Promise<SafeUserType[]>;
+  findDetailById(id: string): Promise<UserDetailRow | null>;
+  findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]>;
+  findPendingUsers(): Promise<UserSummaryRow[]>;
   create(data: CreateUserInput): Promise<UserType>;
 }
 
@@ -40,24 +75,29 @@ export class PrismaUserRepository implements IUserRepository {
     return prisma.user.findUnique({ where: { username } });
   }
 
-  findUsers(isPending: boolean): Promise<SafeUserType[]> {
+  findDetailById(id: string): Promise<UserDetailRow | null> {
+    return prisma.user.findUnique({
+      where: { id },
+      omit: { password: true },
+      include: APPROVER_INCLUDE,
+    });
+  }
+
+  findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]> {
     return prisma.user.findMany({
-      where: { status: isPending ? "awaiting_approval" : { not: "awaiting_approval" } },
-      select: {
-        id: true,
-        firstName: true,
-        middleName: true,
-        lastName: true,
-        username: true,
-        email: true,
-        role: true,
-        status: true,
-        position: true,
-        isSystemAccount: true,
-        approvedAt: true,
-        approvedBy: true,
-        createdAt: true,
+      where: {
+        status: includeInactive ? { in: ["active", "inactive"] } : "active",
+        isSystemAccount: false,
       },
+      select: SUMMARY_SELECT,
+      orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
+    });
+  }
+
+  findPendingUsers(): Promise<UserSummaryRow[]> {
+    return prisma.user.findMany({
+      where: { status: "awaiting_approval" },
+      select: SUMMARY_SELECT,
       orderBy: { createdAt: "asc" },
     });
   }
@@ -65,4 +105,5 @@ export class PrismaUserRepository implements IUserRepository {
   create(data: CreateUserInput): Promise<UserType> {
     return withUniqueConflict(USER_UNIQUE_FIELDS, () => prisma.user.create({ data }));
   }
+
 }

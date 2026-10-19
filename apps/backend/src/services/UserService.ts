@@ -5,14 +5,41 @@ import {
   UnauthorizedError,
 } from "../errors/AppError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
-import type { UserType, SafeUserType } from "@dwd-jev/shared";
+import { formatFullName } from "../utils/fullName.js";
+import type {
+  Role,
+  SafeUserType,
+  UserDetail,
+  UserSummary,
+  UserType,
+} from "@dwd-jev/shared";
 import type { CreateUserInput, LoginInput } from "@dwd-jev/shared";
-import type { IUserRepository } from "../repositories/UserRepository.js";
+import type {
+  IUserRepository,
+  UserDetailRow,
+  UserSummaryRow,
+} from "../repositories/UserRepository.js";
 
 const toSafeUser = (user: UserType): SafeUserType => {
   const { password: _password, ...safeUser } = user;
   return safeUser;
 };
+
+const toUserSummary = (user: UserSummaryRow): UserSummary => ({
+  id: user.id,
+  fullName: formatFullName(user),
+  position: user.position,
+  status: user.status,
+});
+
+const toUserDetail = ({ approvedByUser, ...user }: UserDetailRow): UserDetail => ({
+  ...user,
+  approvedBy: approvedByUser && {
+    id: approvedByUser.id,
+    fullName: approvedByUser.isSystemAccount ? "System" : formatFullName(approvedByUser),
+    isSystemAccount: approvedByUser.isSystemAccount,
+  },
+});
 
 export class UserService {
   constructor(private readonly userRepository: IUserRepository) {}
@@ -45,20 +72,29 @@ export class UserService {
     return toSafeUser(user);
   }
 
-  async getUserById(id: string): Promise<SafeUserType | null> {
-    const user = await this.userRepository.findById(id);
+  // Hides system accounts; non-admins see active users only.
+  async getUserById(id: string, viewerRole: Role): Promise<UserDetail> {
+    const user = await this.userRepository.findDetailById(id);
 
-    if (!user) throw new NotFoundError("User not found.");
+    const isHidden =
+      !user ||
+      user.isSystemAccount ||
+      (viewerRole !== "administrator" && user.status !== "active");
+    if (isHidden) throw new NotFoundError("User not found.");
 
-    return user;
+    return toUserDetail(user);
   }
 
-  async getPendingUsers(): Promise<SafeUserType[]> {
-    return await this.userRepository.findUsers(true);
+  async getPendingUsers(): Promise<UserSummary[]> {
+    const users = await this.userRepository.findPendingUsers();
+    return users.map(toUserSummary);
   }
 
-  async getApprovedUsers(): Promise<SafeUserType[]> {
-    return await this.userRepository.findUsers();
+  async getApprovedUsers(viewerRole: Role): Promise<UserSummary[]> {
+    const users = await this.userRepository.findApprovedUsers(
+      viewerRole === "administrator",
+    );
+    return users.map(toUserSummary);
   }
 
   // Verifies credentials only -- token issuance is AuthService's job.
