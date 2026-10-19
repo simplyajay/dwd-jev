@@ -1,9 +1,10 @@
 import jwt from "jsonwebtoken";
 import { env } from "../env.js";
+import type { Role } from "@dwd-jev/shared";
 
 export interface AccessTokenPayload {
   sub: string;
-  role: string;
+  role: Role;
 }
 
 export const signAccessToken = (payload: AccessTokenPayload): string =>
