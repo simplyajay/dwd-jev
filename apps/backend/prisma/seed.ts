@@ -4,9 +4,9 @@ import { env } from "../src/env.js";
 import { hashPassword } from "../src/utils/password.js";
 
 const main = async () => {
-  const existing = await prisma.user.findUnique({ where: { username: "administrator" } });
+  const existing = await prisma.user.findFirst({ where: { isSystemAccount: true } });
   if (existing) {
-    console.log("Administrator account already exists, skipping.");
+    console.log("System account already exists, skipping.");
     return;
   }
 
