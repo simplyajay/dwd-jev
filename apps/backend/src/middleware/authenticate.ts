@@ -14,7 +14,7 @@ declare global {
 export const authenticate: RequestHandler = (req, _res, next) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
-    next(new UnauthorizedError("Missing bearer token."));
+    next(new UnauthorizedError("Unauthorized"));
     return;
   }
 
