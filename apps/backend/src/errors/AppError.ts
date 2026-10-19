@@ -10,8 +10,8 @@ export class AppError extends Error {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string) {
-    super(400, message);
+  constructor(message: string, field?: string) {
+    super(400, message, field ? { field } : undefined);
   }
 }
 
@@ -22,8 +22,8 @@ export class UnauthorizedError extends AppError {
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = "Forbidden") {
-    super(403, message);
+  constructor(message = "Forbidden", field?: string) {
+    super(403, message, field ? { field } : undefined);
   }
 }
 

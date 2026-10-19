@@ -5,6 +5,19 @@ import { ConflictError } from "../errors/AppError.js";
 // other names Postgres may report for the constraint (column or index name).
 export type UniqueFieldMap = Record<string, { label: string; targets?: string[] }>;
 
+const isRecordNotFound = (error: unknown): boolean =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
+
+// Turns P2025 (no matching record) into null.
+export const nullIfNotFound = async <T>(operation: () => Promise<T>): Promise<T | null> => {
+  try {
+    return await operation();
+  } catch (error) {
+    if (isRecordNotFound(error)) return null;
+    throw error;
+  }
+};
+
 const isUniqueViolation = (error: unknown): error is Prisma.PrismaClientKnownRequestError =>
   error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 
