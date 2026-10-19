@@ -30,7 +30,13 @@ import type {
   UserSummaryRow,
 } from "../repositories/UserRepository.js";
 
-const reserved = ["administrator", "admin", "root"];
+const RESERVED_USERNAMES = ["administrator", "admin", "root"];
+
+const assertUsernameAllowed = (username: string): void => {
+  if (RESERVED_USERNAMES.includes(username.toLocaleLowerCase())) {
+    throw new ForbiddenError("You cannot use this username.", "username");
+  }
+};
 
 const toSafeUser = (user: UserType): SafeUserType => {
   const { password: _password, ...safeUser } = user;
@@ -60,6 +66,8 @@ export class UserService {
   ) {}
 
   async createUser(input: CreateUserInput): Promise<SafeUserType> {
+    assertUsernameAllowed(input.username);
+
     const existingUsername = await this.userRepository.findByUsername(input.username);
     if (existingUsername) {
       throw new ConflictError("Username is already taken.", "username");
@@ -259,11 +267,7 @@ export class UserService {
     }
 
     if (input.username !== current.username) {
-      const forbidden = reserved.includes(input.username.toLocaleLowerCase());
-
-      if (forbidden) {
-        throw new ForbiddenError("You cannot use this username.", "username");
-      }
+      assertUsernameAllowed(input.username);
 
       const existing = await this.userRepository.findByUsername(input.username);
       if (existing) throw new ConflictError("Username is already taken.", "username");
