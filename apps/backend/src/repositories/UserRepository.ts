@@ -1,5 +1,9 @@
 import { prisma } from "../lib/prisma.js";
-import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
+import {
+  nullIfNotFound,
+  withUniqueConflict,
+  type UniqueFieldMap,
+} from "../utils/prismaErrors.js";
 import type { CreateUserInput, SafeUserType, UserType } from "@dwd-jev/shared";
 
 // Backstop for the race the UserService pre-check can't close (see createUser).
@@ -39,6 +43,10 @@ export type ApproverRow = Pick<
   "id" | "firstName" | "middleName" | "lastName" | "isSystemAccount"
 >;
 
+export type ActiveStatus = Exclude<UserType["status"], "awaiting_approval">;
+
+export type ManagedUserData = { status: ActiveStatus } | { role: UserType["role"] };
+
 export type UserDetailRow = SafeUserType & { approvedByUser: ApproverRow | null };
 
 export interface IUserRepository {
@@ -51,6 +59,13 @@ export interface IUserRepository {
   findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]>;
   findPendingUsers(): Promise<UserSummaryRow[]>;
   create(data: CreateUserInput): Promise<UserType>;
+  approvePending(id: string, approvedBy: string): Promise<UserDetailRow | null>;
+  deletePending(id: string): Promise<boolean>;
+  updateManagedUser(
+    id: string,
+    data: ManagedUserData,
+    onlyRegularUsers: boolean,
+  ): Promise<UserDetailRow | null>;
 }
 
 export class PrismaUserRepository implements IUserRepository {
@@ -104,6 +119,46 @@ export class PrismaUserRepository implements IUserRepository {
 
   create(data: CreateUserInput): Promise<UserType> {
     return withUniqueConflict(USER_UNIQUE_FIELDS, () => prisma.user.create({ data }));
+  }
+
+  // Match pending users only; null/false once processed.
+  approvePending(id: string, approvedBy: string): Promise<UserDetailRow | null> {
+    return nullIfNotFound(() =>
+      prisma.user.update({
+        where: { id, status: "awaiting_approval" },
+        data: { status: "active", approvedBy, approvedAt: new Date() },
+        omit: { password: true },
+        include: APPROVER_INCLUDE,
+      }),
+    );
+  }
+
+  async deletePending(id: string): Promise<boolean> {
+    const deleted = await nullIfNotFound(() =>
+      prisma.user.delete({ where: { id, status: "awaiting_approval" } }),
+    );
+    return deleted !== null;
+  }
+
+  // Re-applies the service's checks to close races.
+  updateManagedUser(
+    id: string,
+    data: ManagedUserData,
+    onlyRegularUsers: boolean,
+  ): Promise<UserDetailRow | null> {
+    return nullIfNotFound(() =>
+      prisma.user.update({
+        where: {
+          id,
+          isSystemAccount: false,
+          status: { in: ["active", "inactive"] },
+          ...(onlyRegularUsers && { role: "user" }),
+        },
+        data,
+        omit: { password: true },
+        include: APPROVER_INCLUDE,
+      }),
+    );
   }
 
 }

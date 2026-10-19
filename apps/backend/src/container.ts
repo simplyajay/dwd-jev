@@ -11,6 +11,6 @@ const jevRepository = new PrismaJevRepository();
 export const auditLogRepository = new PrismaAuditLogRepository();
 
 const refreshTokenService = new RefreshTokenService(userRepository);
-export const userService = new UserService(userRepository);
+export const userService = new UserService(userRepository, refreshTokenService);
 export const authService = new AuthService(userService, refreshTokenService);
 export const jevService = new JevService(jevRepository);

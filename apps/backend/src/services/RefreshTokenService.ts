@@ -36,6 +36,12 @@ export class RefreshTokenService {
     if (userId) await redis.del(userActiveTokenKey(userId));
   }
 
+  async revokeAllForUser(userId: string, redis: Redis): Promise<void> {
+    const token = await redis.get(userActiveTokenKey(userId));
+    if (token) await redis.del(refreshTokenKey(token));
+    await redis.del(userActiveTokenKey(userId));
+  }
+
   async rotateRefreshToken(oldToken: string, redis: Redis): Promise<RotatedTokens> {
     const userId = await redis.get(refreshTokenKey(oldToken));
     if (!userId) {
