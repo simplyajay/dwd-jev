@@ -15,6 +15,13 @@ import { authenticate } from "../middleware/authenticate.js";
 import { rateLimit } from "../middleware/rateLimit.js";
 import { IdParamSchema, validateBody, validateParams } from "../middleware/validate.js";
 
+// Per IP: clients behind one NAT/proxy share this limit.
+const registerRateLimit = rateLimit({
+  windowSeconds: 60,
+  max: 15,
+  keyPrefix: "register",
+});
+
 const accountUpdateRateLimit = rateLimit({
   windowSeconds: 60,
   max: 10,
@@ -24,7 +31,12 @@ const accountUpdateRateLimit = rateLimit({
 
 export const userRouter = Router();
 
-userRouter.post("/register", validateBody(CreateUserSchema), createUser);
+userRouter.post(
+  "/register",
+  registerRateLimit,
+  validateBody(CreateUserSchema),
+  createUser,
+);
 
 userRouter.put(
   "/me/profile",
