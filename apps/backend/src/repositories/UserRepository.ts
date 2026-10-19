@@ -1,7 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
-import { SafeUserType } from "@dwd-jev/shared";
-import type { CreateUserInput, UserType } from "@dwd-jev/shared";
+import type { CreateUserInput, SafeUserType, UserType } from "@dwd-jev/shared";
 
 // Backstop for the race the UserService pre-check can't close (see createUser).
 const USER_UNIQUE_FIELDS: UniqueFieldMap = {
@@ -10,24 +9,35 @@ const USER_UNIQUE_FIELDS: UniqueFieldMap = {
 };
 
 export interface IUserRepository {
-  findById(id: string): Promise<UserType | null>;
-  findByUsername(username: string): Promise<UserType | null>;
-  findByEmail(email: string): Promise<UserType | null>;
+  findById(id: string): Promise<SafeUserType | null>;
+  findByUsername(username: string): Promise<SafeUserType | null>;
+  findByEmail(email: string): Promise<SafeUserType | null>;
+  findWithPasswordById(id: string): Promise<UserType | null>;
+  findWithPasswordByUsername(username: string): Promise<UserType | null>;
   findUsers(isPending?: boolean): Promise<SafeUserType[]>;
   create(data: CreateUserInput): Promise<UserType>;
 }
 
 export class PrismaUserRepository implements IUserRepository {
-  findById(id: string): Promise<UserType | null> {
+  findById(id: string): Promise<SafeUserType | null> {
+    return prisma.user.findUnique({ where: { id }, omit: { password: true } });
+  }
+
+  findByUsername(username: string): Promise<SafeUserType | null> {
+    return prisma.user.findUnique({ where: { username }, omit: { password: true } });
+  }
+
+  findByEmail(email: string): Promise<SafeUserType | null> {
+    return prisma.user.findUnique({ where: { email }, omit: { password: true } });
+  }
+
+  // Only for password checks.
+  findWithPasswordById(id: string): Promise<UserType | null> {
     return prisma.user.findUnique({ where: { id } });
   }
 
-  findByUsername(username: string): Promise<UserType | null> {
+  findWithPasswordByUsername(username: string): Promise<UserType | null> {
     return prisma.user.findUnique({ where: { username } });
-  }
-
-  findByEmail(email: string): Promise<UserType | null> {
-    return prisma.user.findUnique({ where: { email } });
   }
 
   findUsers(isPending: boolean): Promise<SafeUserType[]> {

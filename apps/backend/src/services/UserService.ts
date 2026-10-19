@@ -50,7 +50,7 @@ export class UserService {
 
     if (!user) throw new NotFoundError("User not found.");
 
-    return toSafeUser(user);
+    return user;
   }
 
   async getPendingUsers(): Promise<SafeUserType[]> {
@@ -63,7 +63,7 @@ export class UserService {
 
   // Verifies credentials only -- token issuance is AuthService's job.
   async verifyCredentials(input: LoginInput): Promise<SafeUserType> {
-    const user = await this.userRepository.findByUsername(input.username);
+    const user = await this.userRepository.findWithPasswordByUsername(input.username);
     if (!user) {
       throw new UnauthorizedError("Invalid username or password.");
     }
