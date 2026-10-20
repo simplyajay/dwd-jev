@@ -9,8 +9,8 @@
     "start": "NODE_ENV=production node dist/index.js",
     "typecheck": "tsc --noEmit && tsc -p prisma",
     "prisma:generate": "prisma generate",
-    "prisma:migrate:dev": "dotenv -e  .env.dev -- prisma migrate dev",
-    "prisma:migrate:prod": "dotenv -e .env.prod --prisma migrate deploy",
+    "prisma:migrate:dev": "dotenv -e .env.dev -- prisma migrate dev",
+    "prisma:migrate:prod": "dotenv -e .env.prod -- prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "check:indexes": "dotenv -e .env.dev -- tsx prisma/checkIndexes.ts",
     "check:indexes:prod": "dotenv -e .env.prod -- tsx prisma/checkIndexes.ts"
