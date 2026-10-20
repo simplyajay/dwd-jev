@@ -24,9 +24,11 @@ export class AuthService {
     private readonly authStateService: AuthStateService,
   ) {}
 
-  // Bumping the version ends any other session's access token immediately.
+  // Refresh token first, so a Redis outage fails the login without ending the
+  // current session.
   async login(input: LoginInput, redis: Redis): Promise<LoginResult> {
     const user = await this.userService.verifyCredentials(input);
+    const refreshToken = await this.refreshTokenService.issueRefreshToken(user.id, redis);
     const state = await this.authStateService.bump(user.id, redis);
     if (!state) throw new UnauthorizedError("Invalid username or password.");
 
@@ -35,7 +37,6 @@ export class AuthService {
       role: state.role,
       ver: state.tokenVersion,
     });
-    const refreshToken = await this.refreshTokenService.issueRefreshToken(user.id, redis);
     return { accessToken, refreshToken, user };
   }
 
@@ -48,6 +49,9 @@ export class AuthService {
     input: UpdateAccountInput,
     redis: Redis,
   ): Promise<UpdateAccountResult> {
+    // Fail before the password write (which ends the session) if Redis is down.
+    if (input.newPassword) await this.refreshTokenService.ensureAvailable(redis);
+
     const { user, authState } = await this.userService.updateAccount(userId, input);
     if (!authState) return { user };
 

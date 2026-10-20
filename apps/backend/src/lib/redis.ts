@@ -1,12 +1,12 @@
 import { Redis } from "ioredis";
 import { env } from "../env.js";
 
-// enableOfflineQueue: false rejects commands immediately when disconnected
-// instead of queueing forever -- otherwise cache reads hang instead of
-// failing fast whenever Redis is unreachable.
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: 1,
+  // Reject commands while disconnected instead of queueing them.
   enableOfflineQueue: false,
+  // Fail fast when connected but unresponsive.
+  commandTimeout: 200,
 });
 
 redis.on("error", (err) => {

@@ -30,7 +30,8 @@ export class AuthStateService {
     if (cached && cached.tokenVersion >= tokenVersion) return cached;
 
     const state = await this.userRepository.findAuthState(userId);
-    if (state) await this.cache(state, redis);
+    // Not awaited, so an unresponsive Redis costs one timeout, not two.
+    if (state) void this.cache(state, redis);
     return state;
   }
 
