@@ -76,6 +76,8 @@ model User {
   // Nullable while status is awaiting_approval; set on approval.
   approvedAt      DateTime? @map("approved_at")
   createdAt       DateTime  @default(now()) @map("created_at")
+  // Must equal the access token's ver; bumped on every auth-relevant change.
+  tokenVersion    Int       @default(0) @map("token_version")
 
   approvedByUser  User?         @relation("UserApprovedBy", fields: [approvedBy], references: [id])
   approvedUsers   User[]        @relation("UserApprovedBy")
@@ -87,8 +89,8 @@ model User {
   @@map("users")
 }
 
-// jev_number/dv_number/ada_number/check_number are unique only among
-// non-deleted rows, via raw-SQL partial indexes (add_jev_unique_document_numbers).
+// jev/dv/ada/check numbers are unique among non-deleted rows only, via
+// raw-SQL partial indexes (add_jev_unique_document_numbers).
 model Jev {
   id            String      @id @default(uuid()) @db.Uuid
   journalType   JournalType @map("journal_type")
@@ -176,13 +178,9 @@ model ExternalDocumentEntry {
   @@map("external_document_entries")
 }
 
-// Standalone activity feed -- no relations. documentType is a plain String,
-// not an enum, since new document types (trial_balance, journal, general
-// ledger) will be added later and a String avoids an enum-alter migration
-// each time. documentId has no FK (it's polymorphic: it points at the
-// document's own table for create/delete, but at that document's own
-// revision table for update -- resolved in app code via (documentType,
-// action), never joined at the DB level).
+// No relations. documentType is a String so new types need no enum migration.
+// documentId has no FK: the document's id for create/delete, its revision's
+// id for update.
 model AuditLog {
   id           String      @id @default(uuid()) @db.Uuid
   documentType String      @map("document_type")
@@ -198,7 +196,7 @@ model ChartOfAccounts {
   id          String  @id @default(uuid()) @db.Uuid
   accountCode String  @map("account_code")
   accountName String  @map("account_name")
-  /// General Services Office inventory code (typically 3 digits); used by the desktop app to filter accounts for GSO-related entries.
+  /// GSO inventory code (usually 3 digits); the desktop app filters GSO entries by it.
   gso         String?
 
   @@map("chart_of_accounts")
