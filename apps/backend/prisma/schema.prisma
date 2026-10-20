@@ -91,6 +91,7 @@ model User {
 
 // jev/dv/ada/check numbers are unique among non-deleted rows only, via
 // raw-SQL partial indexes (add_jev_unique_document_numbers).
+// Run `pnpm check:indexes` after every migration to confirm they still exist.
 model Jev {
   id            String      @id @default(uuid()) @db.Uuid
   journalType   JournalType @map("journal_type")
