@@ -18,8 +18,7 @@ export function toCents(pesos: number): number {
 
 export const AmountSchema = z.coerce.number().optional();
 
-// accountingEntryId comes from the route, not the body; entryType is
-// inherited from the parent accounting entry, never supplied by the client.
+// accountingEntryId comes from the route; entryType is inherited from the parent.
 export const CreateExternalDocumentEntryInputSchema = z.object({
   documentNumber: z.string(),
   documentName: z.string(),

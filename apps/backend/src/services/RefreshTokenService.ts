@@ -30,10 +30,12 @@ export class RefreshTokenService {
     return token;
   }
 
-  async revokeRefreshToken(token: string, redis: Redis): Promise<void> {
+  // Returns the token's owner, or null if the token was unknown.
+  async revokeRefreshToken(token: string, redis: Redis): Promise<string | null> {
     const userId = await redis.get(refreshTokenKey(token));
     await redis.del(refreshTokenKey(token));
     if (userId) await redis.del(userActiveTokenKey(userId));
+    return userId;
   }
 
   async revokeAllForUser(userId: string, redis: Redis): Promise<void> {
@@ -48,16 +50,20 @@ export class RefreshTokenService {
       throw new UnauthorizedError("Refresh token is invalid or expired.");
     }
 
-    // Delete first -- a token must never be usable twice, even if this throws.
+    // Delete first so a token can never be used twice.
     await redis.del(refreshTokenKey(oldToken));
 
-    // Fresh from the DB, not Redis, so a deactivation takes effect immediately.
-    const user = await this.userRepository.findById(userId);
+    // From the DB, so a deactivation applies immediately.
+    const user = await this.userRepository.findAuthState(userId);
     if (!user || user.status !== "active") {
       throw new UnauthorizedError("Refresh token is invalid or expired.");
     }
 
-    const accessToken = signAccessToken({ sub: user.id, role: user.role });
+    const accessToken = signAccessToken({
+      sub: user.id,
+      role: user.role,
+      ver: user.tokenVersion,
+    });
     const refreshToken = await this.issueRefreshToken(user.id, redis);
 
     return { accessToken, refreshToken };

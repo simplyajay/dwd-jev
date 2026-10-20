@@ -17,8 +17,7 @@ const JEV_FULL_INCLUDE = {
 
 export type JevWithRelations = Prisma.JevGetPayload<{ include: typeof JEV_FULL_INCLUDE }>;
 
-// Raw findMany row -- jevDate is still a Date; JevService formats it into
-// the shared JevListItem (date-only string) shape.
+// jevDate is still a Date here; JevService formats it.
 export interface JevListItemRow {
   id: string;
   jevNumber: string;
@@ -38,8 +37,7 @@ export interface Pagination {
 
 const centsFromPesos = (pesos: number): bigint => BigInt(Math.round(pesos * 100));
 
-// Enforced by partial unique indexes (deleted_at IS NULL) named in the
-// migration; targets covers those index names alongside the column names.
+// Partial unique indexes (deleted_at IS NULL); targets lists their names.
 const JEV_UNIQUE_FIELDS: UniqueFieldMap = {
   jevNumber: {
     label: "JEV number",
@@ -61,9 +59,8 @@ const JEV_UNIQUE_FIELDS: UniqueFieldMap = {
 
 type ValidatedAccountingEntry = CreateJevInput["accountingEntries"][number];
 
-// entryType/amount are nullable/optional on the zod schema only because a
-// superRefine (not the shape itself) enforces their requiredness -- both
-// are guaranteed present once CreateJevInputSchema has validated.
+// Optional in the schema only because superRefine enforces them; always
+// present after validation.
 const buildAccountingEntriesCreate = (entries: ValidatedAccountingEntry[]) =>
   entries.map((entry, index) => {
     const entryType = entry.entryType!;
@@ -75,8 +72,7 @@ const buildAccountingEntriesCreate = (entries: ValidatedAccountingEntry[]) =>
       accountName: entry.accountName,
       entryType,
       amount: centsFromPesos(amount),
-      // External documents inherit the parent's entryType; the input schema
-      // never lets them carry their own.
+      // External documents inherit the parent's entryType.
       externalDocumentEntries: {
         create: entry.externalDocumentEntries.map((doc) => ({
           documentNumber: doc.documentNumber,

@@ -10,8 +10,6 @@ import {
   SupportingDocumentEntrySchema,
 } from "./supportingDocumentEntry.js";
 
-// ----- PAGINATION ------
-
 const PaginationInputSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
@@ -24,7 +22,7 @@ export const JevByMonthInputSchema = PaginationInputSchema.extend({
 });
 
 export const JevByDateRangeInputSchema = PaginationInputSchema.extend({
-  // Plain calendar date, e.g. "2026-12-30" -- no time, no timezone offset.
+  // Plain calendar date, e.g. "2026-12-30".
   startDate: z.iso.date(),
   endDate: z.iso.date(),
   searchKeyword: z.string().trim().min(1).optional(),
@@ -33,8 +31,6 @@ export const JevByDateRangeInputSchema = PaginationInputSchema.extend({
 export type JevByMonthInput = z.infer<typeof JevByMonthInputSchema>;
 
 export type JevByDateRangeInput = z.infer<typeof JevByDateRangeInputSchema>;
-
-// ------- JEV -----------
 
 export const JevSchema = z.object({
   id: z.uuid(),
@@ -68,13 +64,9 @@ export const JevListItemSchema = z.object({
 });
 export type JevListItem = z.infer<typeof JevListItemSchema>;
 
-// ---- JEV INPUT ----
-
 const MIN_ACCOUNT_ROWS = 2;
 
-// z.iso.date() rejects anything but "YYYY-MM-DD"; the transform then makes
-// it a Date, since Prisma requires a full ISO-8601 datetime string (not a
-// bare date) when a string is passed instead of a Date object.
+// Strict "YYYY-MM-DD", converted to a Date (Prisma rejects bare date strings).
 const dateOnlyInput = (message: string) =>
   z.iso.date(message).transform((value) => new Date(value));
 

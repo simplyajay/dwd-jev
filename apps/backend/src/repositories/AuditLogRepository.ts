@@ -10,9 +10,7 @@ export interface CreateAuditLogInput {
 }
 
 export interface IAuditLogRepository {
-  // Accepts an optional transaction client so callers can log atomically
-  // with the write it describes (e.g. inside JevRepository's own
-  // $transaction), instead of as a separate, unguarded insert.
+  // Pass tx to log in the same transaction as the write it describes.
   create(data: CreateAuditLogInput, client?: Prisma.TransactionClient): Promise<void>;
 }
 

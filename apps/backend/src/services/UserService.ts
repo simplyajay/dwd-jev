@@ -12,7 +12,6 @@ import type {
   SafeUserType,
   UserDetail,
   UserSummary,
-  UserType,
 } from "@dwd-jev/shared";
 import type {
   CreateUserInput,
@@ -22,11 +21,14 @@ import type {
 } from "@dwd-jev/shared";
 import type { Redis } from "ioredis";
 import type { RefreshTokenService } from "./RefreshTokenService.js";
+import type { AuthStateService } from "./AuthStateService.js";
 import type {
   ActiveStatus,
+  AuthState,
   IUserRepository,
   ManagedUserData,
   UserDetailRow,
+  UserRow,
   UserSummaryRow,
 } from "../repositories/UserRepository.js";
 
@@ -38,10 +40,17 @@ const assertUsernameAllowed = (username: string): void => {
   }
 };
 
-const toSafeUser = (user: UserType): SafeUserType => {
-  const { password: _password, ...safeUser } = user;
+const toSafeUser = (user: UserRow): SafeUserType => {
+  const { password: _password, tokenVersion: _tokenVersion, ...safeUser } = user;
   return safeUser;
 };
+
+const toAuthState = ({ id, status, role, tokenVersion }: AuthState): AuthState => ({
+  id,
+  status,
+  role,
+  tokenVersion,
+});
 
 const toUserSummary = (user: UserSummaryRow): UserSummary => ({
   id: user.id,
@@ -50,7 +59,11 @@ const toUserSummary = (user: UserSummaryRow): UserSummary => ({
   status: user.status,
 });
 
-const toUserDetail = ({ approvedByUser, ...user }: UserDetailRow): UserDetail => ({
+const toUserDetail = ({
+  approvedByUser,
+  tokenVersion: _tokenVersion,
+  ...user
+}: UserDetailRow): UserDetail => ({
   ...user,
   approvedBy: approvedByUser && {
     id: approvedByUser.id,
@@ -63,6 +76,7 @@ export class UserService {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly refreshTokenService: RefreshTokenService,
+    private readonly authStateService: AuthStateService,
   ) {}
 
   async createUser(input: CreateUserInput): Promise<SafeUserType> {
@@ -143,7 +157,7 @@ export class UserService {
     password: string,
     redis: Redis,
   ): Promise<UserDetail> {
-    const updated = await this.updateManagedUser(id, adminId, password, { status });
+    const updated = await this.updateManagedUser(id, adminId, password, { status }, redis);
 
     // Best effort; refresh re-checks status.
     if (status === "inactive") {
@@ -162,8 +176,9 @@ export class UserService {
     role: Role,
     adminId: string,
     password: string,
+    redis: Redis,
   ): Promise<UserDetail> {
-    const updated = await this.updateManagedUser(id, adminId, password, { role });
+    const updated = await this.updateManagedUser(id, adminId, password, { role }, redis);
     return toUserDetail(updated);
   }
 
@@ -173,6 +188,7 @@ export class UserService {
     adminId: string,
     password: string,
     data: ManagedUserData,
+    redis: Redis,
   ): Promise<UserDetailRow> {
     const field = "status" in data ? "status" : "role";
     const admin = await this.confirmAdminPassword(adminId, password);
@@ -200,6 +216,8 @@ export class UserService {
         "This user was changed by someone else. Please refresh and try again.",
       );
     }
+
+    await this.authStateService.cache(toAuthState(updated), redis);
     return updated;
   }
 
@@ -226,7 +244,7 @@ export class UserService {
   async updateAccount(
     userId: string,
     input: UpdateAccountInput,
-  ): Promise<{ user: UserDetail; passwordChanged: boolean }> {
+  ): Promise<{ user: UserDetail; authState: AuthState | null }> {
     const current = await this.userRepository.findWithPasswordById(userId);
     if (!current) throw new NotFoundError("User not found.");
 
@@ -285,15 +303,19 @@ export class UserService {
     });
     if (!user) throw new NotFoundError("User not found.");
 
-    return { user: toUserDetail(user), passwordChanged: !!input.newPassword };
+    // A password change bumps the version, ending other sessions.
+    return {
+      user: toUserDetail(user),
+      authState: input.newPassword ? toAuthState(user) : null,
+    };
   }
 
-  // Re-checks the admin in the DB (token role may be stale). 403, not 401, on a
-  // wrong password so the client doesn't treat it as an expired token.
+  // Re-reads the admin from the DB. A wrong password is 403, not 401, so the
+  // client doesn't treat it as an expired token.
   private async confirmAdminPassword(
     adminId: string,
     password: string,
-  ): Promise<UserType> {
+  ): Promise<UserRow> {
     const admin = await this.userRepository.findWithPasswordById(adminId);
     if (!admin || admin.status !== "active" || admin.role !== "administrator") {
       throw new ForbiddenError("You do not have permission to perform this action.");
@@ -305,7 +327,7 @@ export class UserService {
     return admin;
   }
 
-  // Verifies credentials only -- token issuance is AuthService's job.
+  // Credentials only; AuthService issues tokens.
   async verifyCredentials(input: LoginInput): Promise<SafeUserType> {
     const user = await this.userRepository.findWithPasswordByUsername(input.username);
     if (!user) {

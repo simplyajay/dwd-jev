@@ -15,8 +15,7 @@ export type SupportingDocumentEntry = z.infer<typeof SupportingDocumentEntrySche
 export const CreateSupportingDocumentEntryInputSchema = z.object({
   documentCode: DocumentCodeSchema,
   documentNumber: z.string().nonempty("Enter document number."),
-  // Strict "YYYY-MM-DD", then converted to a Date -- Prisma requires a full
-  // ISO-8601 datetime string when passing a string, not a bare date.
+  // Strict "YYYY-MM-DD", converted to a Date (Prisma rejects bare date strings).
   documentDate: z.iso.date("Select date").transform((value) => new Date(value)),
 });
 export type CreateSupportingDocumentEntryInput = z.infer<

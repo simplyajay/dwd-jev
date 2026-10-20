@@ -11,8 +11,7 @@ const envSchema = z.object({
   REDIS_URL: z.string().min(1),
   JWT_SECRET: z.string().min(1),
   PORT: z.coerce.number().default(3000),
-  // Preprocessed since an empty "ADMIN_PASSWORD=" line parses to "", not
-  // undefined, and that should still count as unset (seed.ts generates one).
+  // An empty "ADMIN_PASSWORD=" counts as unset (seed.ts then generates one).
   ADMIN_PASSWORD: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.string().min(1).optional(),

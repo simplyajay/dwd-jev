@@ -1,5 +1,7 @@
 import type { RequestHandler } from "express";
+import { authStateService } from "../container.js";
 import { UnauthorizedError } from "../errors/AppError.js";
+import { redis } from "../lib/redis.js";
 import { verifyAccessToken, type AccessTokenPayload } from "../utils/jwt.js";
 
 declare global {
@@ -10,18 +12,33 @@ declare global {
   }
 }
 
-// Not mounted globally -- createUser/login must stay reachable without a token.
-export const authenticate: RequestHandler = (req, _res, next) => {
+// Mounted per route (register and login need no token). Status and role come
+// from the DB via the cache, not the token.
+export const authenticate: RequestHandler = async (req, _res, next) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
     next(new UnauthorizedError("Unauthorized"));
     return;
   }
 
+  let payload: AccessTokenPayload;
   try {
-    req.user = verifyAccessToken(header.slice("Bearer ".length));
-    next();
+    payload = verifyAccessToken(header.slice("Bearer ".length));
   } catch {
     next(new UnauthorizedError("Invalid or expired token."));
+    return;
+  }
+
+  try {
+    const state = await authStateService.get(payload.sub, payload.ver, redis);
+    if (!state || state.status !== "active" || state.tokenVersion !== payload.ver) {
+      next(new UnauthorizedError("Your session is no longer valid. Please log in again."));
+      return;
+    }
+
+    req.user = { sub: state.id, role: state.role, ver: state.tokenVersion };
+    next();
+  } catch (err) {
+    next(err);
   }
 };

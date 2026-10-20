@@ -53,6 +53,7 @@ export const setUserRole = asyncHandler<Request<{ id: string }, any, SetUserRole
       role,
       req.user!.sub,
       password,
+      redis,
     );
     res.success(user, 200);
   },

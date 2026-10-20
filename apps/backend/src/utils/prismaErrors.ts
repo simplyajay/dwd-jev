@@ -1,8 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { ConflictError } from "../errors/AppError.js";
 
-// Keyed by Prisma field name (returned as details.field). `targets` covers
-// other names Postgres may report for the constraint (column or index name).
+// Keyed by Prisma field name (returned as details.field); `targets` lists
+// other constraint names Postgres may report.
 export type UniqueFieldMap = Record<string, { label: string; targets?: string[] }>;
 
 const isRecordNotFound = (error: unknown): boolean =>

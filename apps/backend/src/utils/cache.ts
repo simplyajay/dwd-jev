@@ -34,7 +34,7 @@ export const invalidate = async (key: string): Promise<void> => {
   }
 };
 
-// SCAN, not KEYS -- KEYS blocks Redis for the duration on large keyspaces.
+// SCAN, not KEYS, which blocks Redis.
 export const invalidatePattern = async (pattern: string): Promise<void> => {
   try {
     const keysToDelete: string[] = [];

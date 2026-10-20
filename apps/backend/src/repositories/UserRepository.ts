@@ -24,6 +24,17 @@ const APPROVER_INCLUDE = {
   },
 } as const;
 
+const AUTH_STATE_SELECT = {
+  id: true,
+  status: true,
+  role: true,
+  tokenVersion: true,
+} as const;
+
+const SAFE_OMIT = { password: true, tokenVersion: true } as const;
+
+const BUMP_TOKEN_VERSION = { tokenVersion: { increment: 1 } } as const;
+
 const SUMMARY_SELECT = {
   id: true,
   firstName: true,
@@ -47,22 +58,37 @@ export type ActiveStatus = Exclude<UserType["status"], "awaiting_approval">;
 
 export type ManagedUserData = { status: ActiveStatus } | { role: UserType["role"] };
 
-export type ProfileData = Pick<UserType, "firstName" | "middleName" | "lastName" | "position">;
+export type ProfileData = Pick<
+  UserType,
+  "firstName" | "middleName" | "lastName" | "position"
+>;
 
 export type AccountData = Pick<UserType, "username" | "email"> & { password?: string };
 
-export type UserDetailRow = SafeUserType & { approvedByUser: ApproverRow | null };
+export type UserRow = UserType & { tokenVersion: number };
+
+export type AuthState = Pick<UserType, "id" | "status" | "role"> & {
+  tokenVersion: number;
+};
+
+// tokenVersion is internal; the service strips it before responding.
+export type UserDetailRow = SafeUserType & {
+  tokenVersion: number;
+  approvedByUser: ApproverRow | null;
+};
 
 export interface IUserRepository {
   findById(id: string): Promise<SafeUserType | null>;
   findByUsername(username: string): Promise<SafeUserType | null>;
   findByEmail(email: string): Promise<SafeUserType | null>;
-  findWithPasswordById(id: string): Promise<UserType | null>;
-  findWithPasswordByUsername(username: string): Promise<UserType | null>;
+  findWithPasswordById(id: string): Promise<UserRow | null>;
+  findWithPasswordByUsername(username: string): Promise<UserRow | null>;
+  findAuthState(id: string): Promise<AuthState | null>;
+  bumpTokenVersion(id: string): Promise<AuthState | null>;
   findDetailById(id: string): Promise<UserDetailRow | null>;
   findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]>;
   findPendingUsers(): Promise<UserSummaryRow[]>;
-  create(data: CreateUserInput): Promise<UserType>;
+  create(data: CreateUserInput): Promise<UserRow>;
   approvePending(id: string, approvedBy: string): Promise<UserDetailRow | null>;
   deletePending(id: string): Promise<boolean>;
   updateManagedUser(
@@ -76,24 +102,38 @@ export interface IUserRepository {
 
 export class PrismaUserRepository implements IUserRepository {
   findById(id: string): Promise<SafeUserType | null> {
-    return prisma.user.findUnique({ where: { id }, omit: { password: true } });
+    return prisma.user.findUnique({ where: { id }, omit: SAFE_OMIT });
   }
 
   findByUsername(username: string): Promise<SafeUserType | null> {
-    return prisma.user.findUnique({ where: { username }, omit: { password: true } });
+    return prisma.user.findUnique({ where: { username }, omit: SAFE_OMIT });
   }
 
   findByEmail(email: string): Promise<SafeUserType | null> {
-    return prisma.user.findUnique({ where: { email }, omit: { password: true } });
+    return prisma.user.findUnique({ where: { email }, omit: SAFE_OMIT });
   }
 
   // Only for password checks.
-  findWithPasswordById(id: string): Promise<UserType | null> {
+  findWithPasswordById(id: string): Promise<UserRow | null> {
     return prisma.user.findUnique({ where: { id } });
   }
 
-  findWithPasswordByUsername(username: string): Promise<UserType | null> {
+  findWithPasswordByUsername(username: string): Promise<UserRow | null> {
     return prisma.user.findUnique({ where: { username } });
+  }
+
+  findAuthState(id: string): Promise<AuthState | null> {
+    return prisma.user.findUnique({ where: { id }, select: AUTH_STATE_SELECT });
+  }
+
+  bumpTokenVersion(id: string): Promise<AuthState | null> {
+    return nullIfNotFound(() =>
+      prisma.user.update({
+        where: { id },
+        data: BUMP_TOKEN_VERSION,
+        select: AUTH_STATE_SELECT,
+      }),
+    );
   }
 
   findDetailById(id: string): Promise<UserDetailRow | null> {
@@ -123,7 +163,7 @@ export class PrismaUserRepository implements IUserRepository {
     });
   }
 
-  create(data: CreateUserInput): Promise<UserType> {
+  create(data: CreateUserInput): Promise<UserRow> {
     return withUniqueConflict(USER_UNIQUE_FIELDS, () => prisma.user.create({ data }));
   }
 
@@ -160,7 +200,7 @@ export class PrismaUserRepository implements IUserRepository {
           status: { in: ["active", "inactive"] },
           ...(onlyRegularUsers && { role: "user" }),
         },
-        data,
+        data: { ...data, ...BUMP_TOKEN_VERSION },
         omit: { password: true },
         include: APPROVER_INCLUDE,
       }),
@@ -183,7 +223,7 @@ export class PrismaUserRepository implements IUserRepository {
       nullIfNotFound(() =>
         prisma.user.update({
           where: { id },
-          data,
+          data: { ...data, ...(data.password && BUMP_TOKEN_VERSION) },
           omit: { password: true },
           include: APPROVER_INCLUDE,
         }),

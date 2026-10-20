@@ -9,10 +9,8 @@ export interface JevDiff {
   removed: string[]; // before-indices
 }
 
-// Excludes id/createdAt/createdBy/lastUpdatedAt/lastUpdatedBy/deletedAt/
-// deletedBy -- lastUpdatedAt/lastUpdatedBy differ on every single update by
-// definition, so including them would mark every revision as "changed" on
-// fields nobody actually edited.
+// Excludes identity and audit fields; lastUpdatedAt/By change on every update,
+// so they would always show as changed.
 const JEV_SCALAR_FIELDS = [
   "journalType",
   "jevNumber",
@@ -27,8 +25,7 @@ const JEV_SCALAR_FIELDS = [
   "description",
 ] as const satisfies readonly (keyof Jev)[];
 
-// sortOrder/id/jevId are identity/position bookkeeping, not user-edited
-// content -- excluded so reordering rows alone doesn't read as a "change".
+// Bookkeeping only, so reordering rows doesn't count as a change.
 const ACCOUNTING_ENTRY_FIELDS = [
   "accountCode",
   "accountName",
@@ -36,16 +33,14 @@ const ACCOUNTING_ENTRY_FIELDS = [
   "amount",
 ] as const satisfies readonly (keyof AccountingEntry)[];
 
-// entryType is inherited from the parent accounting entry, never edited
-// independently -- excluded for the same reason as documentName below.
+// entryType is inherited from the parent accounting entry.
 const EXTERNAL_DOCUMENT_FIELDS = [
   "documentNumber",
   "documentName",
   "amount",
 ] as const satisfies readonly (keyof ExternalDocumentEntry)[];
 
-// documentName is derived server-side from documentCode -- excluded since
-// it can never differ independently of documentCode.
+// documentName is derived from documentCode.
 const SUPPORTING_DOCUMENT_FIELDS = [
   "documentCode",
   "documentNumber",
@@ -72,9 +67,8 @@ interface MatchResult<T> {
   removed: { item: T; index: number }[];
 }
 
-// Matches by content key, not id -- ids are regenerated on every update
-// (full delete-and-recreate), so they can't identify "the same line" across
-// a before/after pair. Same-key duplicates are paired in original order.
+// Matches by content key, not id (ids are regenerated on every update).
+// Duplicate keys are paired in order.
 const matchByKey = <T>(before: T[], after: T[], keyOf: (item: T) => string): MatchResult<T> => {
   const beforeQueues = new Map<string, { item: T; index: number }[]>();
   before.forEach((item, index) => {
