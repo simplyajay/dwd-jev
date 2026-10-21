@@ -15,11 +15,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting. Unused locals/parameters are left to Biome: tsc would also apply
-       them to packages/shared sources, which this app must not edit. */
+    /* Linting. Also applies to the packages/shared sources compiled here. */
     "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
 
