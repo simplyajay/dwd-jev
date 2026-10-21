@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { CircleCheckIcon } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { dismissOn } from "@/components/form/dismiss-on";
+import { FormAlert } from "@/components/form/form-alert";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { FieldGroup } from "@/components/ui/field";
@@ -17,7 +19,7 @@ import {
   type PersonalInfoInput,
   PersonalInfoSchema,
 } from "../schemas";
-import { AuthHeading, FormAlert } from "./auth-split-layout";
+import { AuthHeading } from "./auth-split-layout";
 
 type Step = "personal" | "account";
 
@@ -80,7 +82,10 @@ function PersonalInfoStep({
 }) {
   const form = useForm<PersonalInfoInput, unknown, PersonalInfo>({
     resolver: zodResolver(PersonalInfoSchema),
-    shouldFocusError: false, // see login-form.tsx
+    // Validate on submit only (see dismissOn).
+    mode: "onSubmit",
+    reValidateMode: "onSubmit",
+    shouldFocusError: false,
     defaultValues: {
       firstName: defaultValues?.firstName ?? "",
       middleName: defaultValues?.middleName ?? "",
@@ -90,6 +95,9 @@ function PersonalInfoStep({
   });
   const { errors } = form.formState;
 
+  const dismissErrorsOn = (field: keyof PersonalInfoInput) =>
+    dismissOn(() => form.clearErrors(field));
+
   return (
     <form onSubmit={form.handleSubmit(onNext)} noValidate>
       <FieldGroup>
@@ -98,26 +106,26 @@ function PersonalInfoStep({
           autoFocus
           error={errors.firstName}
           {...form.register("firstName")}
-          onFocus={() => form.clearErrors("firstName")}
+          {...dismissErrorsOn("firstName")}
         />
         <TextField
           label="Middle name"
           optional
           error={errors.middleName}
           {...form.register("middleName")}
-          onFocus={() => form.clearErrors("middleName")}
+          {...dismissErrorsOn("middleName")}
         />
         <TextField
           label="Last name"
           error={errors.lastName}
           {...form.register("lastName")}
-          onFocus={() => form.clearErrors("lastName")}
+          {...dismissErrorsOn("lastName")}
         />
         <TextField
           label="Position"
           error={errors.position}
           {...form.register("position")}
-          onFocus={() => form.clearErrors("position")}
+          {...dismissErrorsOn("position")}
         />
         <Button type="submit" size="lg">
           Next
@@ -147,18 +155,21 @@ function AccountInfoStep({
   });
   const { errors, isSubmitting } = form.formState;
 
+  // Correcting any field also drops the submit error above the form.
+  const dismissErrorsOn = (field: keyof AccountInfoInput) =>
+    dismissOn(() => {
+      form.clearErrors(field);
+      setSubmitError(null);
+    });
+
   const onSubmit = form.handleSubmit(async ({ confirmPassword: _, ...account }) => {
     if (!personal) return onBack();
     setSubmitError(null);
     try {
       onRegistered(await register({ ...personal, ...account }));
     } catch (error) {
-      // A conflict names the field it is about ("username", "email"): show
-      // the message on that field instead of above the form.
-      if (
-        error instanceof ApiError &&
-        (error.field === "username" || error.field === "email")
-      ) {
+      // A conflict names its field: show the message there.
+      if (error instanceof ApiError && (error.field === "username" || error.field === "email")) {
         form.setError(error.field, { message: error.message });
         return;
       }
@@ -172,32 +183,32 @@ function AccountInfoStep({
         <FormAlert message={submitError} />
         <TextField
           label="Username"
+          autoFocus
           error={errors.username}
           {...form.register("username")}
-          onFocus={() => form.clearErrors("username")}
+          {...dismissErrorsOn("username")}
         />
         <TextField
           label="Email"
           type="email"
           optional
-          autoFocus
           error={errors.email}
           {...form.register("email")}
-          onFocus={() => form.clearErrors("email")}
+          {...dismissErrorsOn("email")}
         />
         <TextField
           label="Password"
           type="password"
           error={errors.password}
           {...form.register("password")}
-          onFocus={() => form.clearErrors("password")}
+          {...dismissErrorsOn("password")}
         />
         <TextField
           label="Confirm password"
           type="password"
           error={errors.confirmPassword}
           {...form.register("confirmPassword")}
-          onFocus={() => form.clearErrors("confirmPassword")}
+          {...dismissErrorsOn("confirmPassword")}
         />
         <div className="grid grid-cols-2 gap-3">
           <Button

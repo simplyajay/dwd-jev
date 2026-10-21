@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { dismissOn } from "@/components/form/dismiss-on";
+import { FormAlert } from "@/components/form/form-alert";
 import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,7 +12,7 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { errorMessage } from "@/lib/api";
 import { useAuth } from "../auth-context";
 import { forgetUsername, readRememberedUsername, rememberUsername } from "../remembered-username";
-import { AuthHeading, FormAlert } from "./auth-split-layout";
+import { AuthHeading } from "./auth-split-layout";
 
 export function LoginForm() {
   const { login } = useAuth();
@@ -20,8 +22,7 @@ export function LoginForm() {
   const [remember, setRemember] = useState(rememberedUsername !== null);
   const form = useForm<LoginInput>({
     resolver: zodResolver(LoginInputSchema),
-    // Fields clear their error on focus, so the default "focus the first invalid
-    // field" would erase that error the moment it appeared.
+    // Errors clear on focus, so focusing the first invalid field would erase them.
     mode: "onSubmit",
     reValidateMode: "onSubmit",
     shouldFocusError: false,
@@ -31,18 +32,12 @@ export function LoginForm() {
   const { clearErrors } = form;
   const { errors, isSubmitting } = form.formState;
 
-  // Going back to a field means the user is correcting the form: drop that
-  // field's error and the sign-in error (wrong password, pending account...).
-  //
-  // Focus alone is not enough. Submitting with Enter leaves the field focused,
-  // so there is no later focus event -- clicking or typing in it must count too.
-  const dismissErrorsOn = (field: keyof LoginInput) => {
-    const dismiss = () => {
+  // Correcting a field also drops the sign-in error.
+  const dismissErrorsOn = (field: keyof LoginInput) =>
+    dismissOn(() => {
       clearErrors(field);
       setSubmitError(null);
-    };
-    return { onFocus: dismiss, onPointerDown: dismiss, onInput: dismiss };
-  };
+    });
 
   const onRememberChange = (checked: boolean) => {
     setRemember(checked);
@@ -50,8 +45,7 @@ export function LoginForm() {
     if (!checked) forgetUsername();
   };
 
-  // On success the auth state flips to signed-in and the _auth route guard
-  // redirects to the app, so there is nothing to navigate here.
+  // On success, the _auth route guard redirects into the app.
   const onSubmit = form.handleSubmit(async (values) => {
     setSubmitError(null);
     try {
