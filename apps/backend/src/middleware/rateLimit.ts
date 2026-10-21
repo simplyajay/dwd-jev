@@ -9,6 +9,15 @@ interface RateLimitOptions {
   keyBy?: (req: Request) => string | undefined;
 }
 
+// Atomic, so a key can't be left without a TTL and block forever.
+const INCR_WITH_TTL = `
+local count = redis.call("INCR", KEYS[1])
+if redis.call("TTL", KEYS[1]) == -1 then
+  redis.call("EXPIRE", KEYS[1], ARGV[1])
+end
+return count
+`;
+
 // Fixed-window counter, per IP unless keyBy is given. Fails open if Redis is down.
 export const rateLimit = ({
   windowSeconds,
@@ -20,10 +29,7 @@ export const rateLimit = ({
     const key = `ratelimit:${keyPrefix}:${keyBy(req) ?? "unknown"}`;
 
     try {
-      const count = await redis.incr(key);
-      if (count === 1) {
-        await redis.expire(key, windowSeconds);
-      }
+      const count = (await redis.eval(INCR_WITH_TTL, 1, key, windowSeconds)) as number;
 
       if (count > max) {
         next(new TooManyRequestsError());
