@@ -1,17 +1,13 @@
 import type { CreateUserInput, LoginInput, SafeUserType } from "@dwd-jev/shared";
 import { createContext, useContext } from "react";
 
-/*
- * Kept apart from auth-provider.tsx on purpose. The provider imports the API
- * layer, so editing anything under lib/api hot-reloads it; if the context were
- * created in that same module it would be recreated too, and every mounted
- * consumer would lose its provider.
- */
+// Kept apart from auth-provider.tsx so hot-reloading the provider keeps this context object.
 
 export type AuthState =
   | { status: "restoring" }
   | { status: "signed-out" }
-  | { status: "signed-in"; user: SafeUserType };
+  /** The server ended the session; the app stays up behind a dialog until the user leaves. */
+  | { status: "signed-in"; user: SafeUserType; sessionEnded?: true };
 
 export interface AuthContextValue {
   state: AuthState;
@@ -19,6 +15,8 @@ export interface AuthContextValue {
   /** Resolves with the created account (not signed in -- it may need approval). */
   register: (input: CreateUserInput) => Promise<SafeUserType>;
   logout: () => Promise<void>;
+  /** Clears the ended session and goes to the login page. */
+  leaveEndedSession: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

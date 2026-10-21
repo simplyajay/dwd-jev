@@ -5,50 +5,74 @@ import { getAccessToken } from "./access-token";
 import { ApiError, NETWORK_ERROR_MESSAGE, UNEXPECTED_ERROR_MESSAGE } from "./errors";
 import { ErrorBodySchema } from "./schemas";
 
-/*
- * JSON client for the backend, over the Tauri HTTP plugin (requests leave from
- * Rust, so there is no CORS, and only the configured API origin is reachable).
- *
- * Contract:
- *   success -> { code, data }
- *   failure -> { code, message, details?: { field } }
- *
- * Not handled yet: retrying a request after refreshing an expired access
- * token. Add that here when the first authenticated endpoint is wired.
- */
+// JSON client over the Tauri HTTP plugin: no CORS, and only the API origin is reachable.
+// A 401 outside /api/auth refreshes the session and replays the request once.
 
 const TIMEOUT_MS = 15_000;
 
-// Asked once; the URL is compiled into the app and cannot change at runtime.
+// The URL is compiled in, so ask for it once.
 let baseUrlPromise: Promise<string> | null = null;
 const baseUrl = () => {
   baseUrlPromise ??= getApiBaseUrl();
   return baseUrlPromise;
 };
 
+/** Renews the session and reports success; registered by the auth provider. */
+type SessionRefresher = () => Promise<boolean>;
+
+let sessionRefresher: SessionRefresher | null = null;
+// One refresh at a time: refresh tokens rotate, so a second one would be spent.
+let refreshInFlight: Promise<boolean> | null = null;
+
+export function setSessionRefresher(refresher: SessionRefresher | null): void {
+  sessionRefresher = refresher;
+}
+
+function refreshSession(): Promise<boolean> {
+  if (!sessionRefresher) return Promise.resolve(false);
+  refreshInFlight ??= sessionRefresher()
+    .catch(() => false)
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
 interface RequestOptions<TSchema extends z.ZodType> {
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   /** Path under the API origin, e.g. "/api/auth/login". */
   path: string;
   body?: unknown;
-  /** Validates `data` of the success envelope. Omit when the caller ignores it. */
+  /** Validates the envelope's `data`; omit when the caller ignores it. */
   schema?: TSchema;
 }
 
-export async function request<TSchema extends z.ZodType = z.ZodUnknown>({
-  method,
-  path,
-  body,
-  schema,
-}: RequestOptions<TSchema>): Promise<z.output<TSchema>> {
+export async function request<TSchema extends z.ZodType = z.ZodUnknown>(
+  options: RequestOptions<TSchema>,
+): Promise<z.output<TSchema>> {
+  const sentToken = getAccessToken();
+  let response = await send(options, sentToken);
+
+  // Auth endpoints use 401 for bad credentials; refreshing there would loop.
+  if (response.status === 401 && !options.path.startsWith("/api/auth/")) {
+    // Another request may have renewed the token already.
+    const renewed = getAccessToken() !== sentToken || (await refreshSession());
+    if (renewed) response = await send(options, getAccessToken());
+  }
+
+  return readResponse(response, options.schema);
+}
+
+async function send(
+  { method, path, body }: RequestOptions<z.ZodType>,
+  accessToken: string | null,
+): Promise<Response> {
   const headers: Record<string, string> = { Accept: "application/json" };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const accessToken = getAccessToken();
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  let response: Response;
   try {
-    response = await fetch(`${await baseUrl()}${path}`, {
+    return await fetch(`${await baseUrl()}${path}`, {
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -57,7 +81,12 @@ export async function request<TSchema extends z.ZodType = z.ZodUnknown>({
   } catch {
     throw new ApiError(0, NETWORK_ERROR_MESSAGE);
   }
+}
 
+async function readResponse<TSchema extends z.ZodType>(
+  response: Response,
+  schema: TSchema | undefined,
+): Promise<z.output<TSchema>> {
   const payload: unknown = await response.json().catch(() => undefined);
 
   if (!response.ok) throw toApiError(response.status, payload);
@@ -74,8 +103,7 @@ function toApiError(status: number, payload: unknown): ApiError {
   const parsed = ErrorBodySchema.safeParse(payload);
   if (!parsed.success) return new ApiError(status, UNEXPECTED_ERROR_MESSAGE);
 
-  // 400s carry raw validator output and 5xx carry internals; neither is meant
-  // for users. Everything else (401, 403, 404, 409...) is written for them.
+  // 400 and 5xx messages are raw internals, not meant for users.
   const userFacing = status !== 400 && status < 500;
   return new ApiError(
     status,

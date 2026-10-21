@@ -2,6 +2,7 @@ import { Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useAuth } from "@/features/auth/auth-context";
+import { SessionEndedDialog } from "@/features/auth/components/session-ended-dialog";
 import { SettingsDialog } from "@/features/settings/components/settings-dialog";
 import { AppHeader } from "./app-header";
 import { AppSidebar } from "./app-sidebar";
@@ -30,8 +31,7 @@ export function AppLayout() {
     }
   };
 
-  // On sign-out this layout renders once more before the route guard
-  // redirects to /login; everything below assumes a signed-in user.
+  // Renders once more on sign-out, before the route guard redirects.
   if (state.status !== "signed-in") return null;
 
   return (
@@ -45,6 +45,7 @@ export function AppLayout() {
         </div>
       </SidebarInset>
       <SettingsDialog />
+      <SessionEndedDialog />
     </SidebarProvider>
   );
 }
