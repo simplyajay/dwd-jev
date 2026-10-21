@@ -1,14 +1,7 @@
 import { CreateUserSchema } from "@dwd-jev/shared";
 import { z } from "zod";
 
-/*
- * Sign-up form schemas, derived from the shared CreateUserSchema so the
- * backend's rules stay the source of truth.
- *
- * The shared schema has no custom messages yet, so the fields are re-declared
- * here with the SAME rules plus readable messages. Drop these overrides once
- * shared adds messages (as LoginInputSchema already does).
- */
+// Sign-up schemas from the shared CreateUserSchema, plus form-only concerns.
 
 /** Text inputs give "" for empty; optional fields should treat that as absent. */
 const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
@@ -19,10 +12,7 @@ export const PersonalInfoSchema = CreateUserSchema.pick({
   lastName: true,
   position: true,
 }).extend({
-  firstName: z.string().trim().min(1, "Please enter your first name."),
-  middleName: z.preprocess(emptyToUndefined, z.string().trim().nullish()),
-  lastName: z.string().trim().min(1, "Please enter your last name."),
-  position: z.string().trim().min(1, "Please enter your position."),
+  middleName: z.preprocess(emptyToUndefined, CreateUserSchema.shape.middleName),
 });
 
 export const AccountInfoSchema = CreateUserSchema.pick({
@@ -31,9 +21,7 @@ export const AccountInfoSchema = CreateUserSchema.pick({
   password: true,
 })
   .extend({
-    email: z.preprocess(emptyToUndefined, z.email("Please enter a valid email address.").nullish()),
-    username: z.string().trim().min(1, "Please enter a username."),
-    password: z.string().min(8, "Password must be at least 8 characters."),
+    email: z.preprocess(emptyToUndefined, CreateUserSchema.shape.email),
     confirmPassword: z.string().min(1, "Please confirm your password."),
   })
   .refine((data) => data.password === data.confirmPassword, {

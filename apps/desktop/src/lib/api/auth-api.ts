@@ -1,5 +1,6 @@
+import { SafeUserSchema } from "@dwd-jev/shared";
 import { request } from "./http";
-import { AuthSessionSchema, SafeUserSchema } from "./schemas";
+import { AuthSessionSchema } from "./schemas";
 import type { Api } from "./types";
 
 export const authApi: Api["auth"] = {
@@ -9,8 +10,7 @@ export const authApi: Api["auth"] = {
   register: (input) =>
     request({ method: "POST", path: "/api/users/register", body: input, schema: SafeUserSchema }),
 
-  // The backend rotates refresh tokens: the one sent here is spent, and the
-  // session returned carries its replacement.
+  // Refresh tokens rotate: the returned session carries the replacement.
   refresh: (refreshToken) =>
     request({
       method: "POST",
