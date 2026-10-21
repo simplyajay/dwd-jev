@@ -1,14 +1,10 @@
 /**
- * The one error type the API layer throws.
- *
- * `status` is the HTTP status, which the backend also echoes as `code` in the
- * error body. Two values never come from the backend:
- *   0  -- the request never got a response (server down, no network, timeout)
- *   -1 -- a response arrived but wasn't in the agreed shape
+ * The one error type the API layer throws. `status` is the HTTP status, or
+ * 0 when no response arrived and -1 when it wasn't in the agreed shape.
  */
 export class ApiError extends Error {
   readonly status: number;
-  /** For conflicts (409): the offending input, e.g. "username", "email", "jevNumber". */
+  /** The input the error is about, e.g. "username" (409) or "password" (403). */
   readonly field: string | undefined;
 
   constructor(status: number, message: string, field?: string) {
