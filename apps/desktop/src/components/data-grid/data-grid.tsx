@@ -7,7 +7,7 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useRef } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useElementWidth } from "@/hooks/use-element-width";
 import { cn } from "@/lib/utils";
@@ -34,21 +34,19 @@ interface DataGridProps<TData extends RowData> {
   columns: DataGridColumn<TData>[];
   data: TData[];
   getRowId: (row: TData) => string;
-  /** Accessible name for the grid, e.g. "Journal entry vouchers". */
+  /** Accessible name for the grid. */
   label: string;
   isLoading?: boolean;
   emptyMessage?: ReactNode;
+  /** Makes rows clickable, and focusable for Enter or Space. */
+  onRowClick?: (row: TData) => void;
   className?: string;
 }
 
 const SKELETON_ROWS = 8;
 const CELL = "flex min-w-0 items-center px-4";
 
-/**
- * Table built from divs + CSS grid instead of <table>. Every row is its own
- * grid sharing one column template, which keeps columns aligned and lets the
- * empty state be a single full-width block with no colspan bookkeeping.
- */
+/** Div + CSS grid table: rows share one column template, so the empty state can span them all. */
 export function DataGrid<TData extends RowData>({
   columns,
   data,
@@ -56,6 +54,7 @@ export function DataGrid<TData extends RowData>({
   label,
   isLoading = false,
   emptyMessage = "No data",
+  onRowClick,
   className,
 }: DataGridProps<TData>) {
   const table = useTable({ features, columns, data, getRowId });
@@ -124,11 +123,7 @@ export function DataGrid<TData extends RowData>({
             ))
           ) : rows.length === 0 ? (
             <div role="row" className="flex flex-1">
-              {/*
-               * One cell spanning every column. It is pinned to the visible
-               * width (sticky + measured width) so the message stays centred
-               * on screen even when the columns overflow horizontally.
-               */}
+              {/* One cell across all columns, pinned to the visible width so the message stays centred. */}
               <div
                 role="cell"
                 aria-colspan={headers.length}
@@ -143,8 +138,21 @@ export function DataGrid<TData extends RowData>({
               <div
                 key={row.id}
                 role="row"
-                className="grid border-table-divider border-b last:border-b-0 hover:bg-muted/50"
+                className={cn(
+                  "grid border-table-divider border-b last:border-b-0 hover:bg-muted/50",
+                  onRowClick &&
+                    "cursor-pointer outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset",
+                )}
                 style={{ gridTemplateColumns }}
+                {...(onRowClick && {
+                  tabIndex: 0,
+                  onClick: () => onRowClick(row.original),
+                  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault(); // Space would scroll the grid
+                    onRowClick(row.original);
+                  },
+                })}
               >
                 {row.getAllCells().map((cell) => (
                   <div

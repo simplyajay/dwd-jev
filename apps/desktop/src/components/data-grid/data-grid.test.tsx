@@ -1,4 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { createDataGridColumnHelper, DataGrid } from "./data-grid";
 
 interface Fruit {
@@ -72,5 +73,31 @@ describe("DataGrid", () => {
     expect(screen.getByRole("table")).toHaveAttribute("aria-busy", "true");
     expect(screen.queryByText("No data")).not.toBeInTheDocument();
     expect(screen.getAllByRole("row").length).toBeGreaterThan(2);
+  });
+});
+
+describe("DataGrid row clicks", () => {
+  it("opens a row by click, Enter or Space", async () => {
+    const onRowClick = vi.fn();
+    const user = userEvent.setup();
+    renderGrid({ onRowClick });
+    const [apple, banana] = screen.getAllByRole("row").slice(1);
+
+    await user.click(within(apple as HTMLElement).getByText("Apple"));
+    (banana as HTMLElement).focus();
+    await user.keyboard("{Enter}");
+    await user.keyboard(" ");
+
+    expect(onRowClick.mock.calls.map(([fruit]) => fruit.name)).toEqual([
+      "Apple",
+      "Banana",
+      "Banana",
+    ]);
+  });
+
+  it("leaves rows out of the tab order when they don't open anything", () => {
+    renderGrid();
+
+    for (const row of screen.getAllByRole("row")) expect(row).not.toHaveAttribute("tabindex");
   });
 });
