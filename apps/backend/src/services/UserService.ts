@@ -322,7 +322,7 @@ export class UserService {
     }
 
     const isPasswordValid = await comparePassword(password, admin.password);
-    if (!isPasswordValid) throw new ForbiddenError("Incorrect password.");
+    if (!isPasswordValid) throw new ForbiddenError("Incorrect password.", "password");
 
     return admin;
   }
