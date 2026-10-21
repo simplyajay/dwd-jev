@@ -1,4 +1,4 @@
-import { formatDateOnly } from "./dates";
+import { formatDate, formatDateOnly } from "./dates";
 
 describe("formatDateOnly", () => {
   it("formats a date-only string without shifting the day", () => {
@@ -8,5 +8,11 @@ describe("formatDateOnly", () => {
 
   it("returns malformed input unchanged", () => {
     expect(formatDateOnly("not-a-date")).toBe("not-a-date");
+  });
+});
+
+describe("formatDate", () => {
+  it("formats a timestamp as its local calendar day", () => {
+    expect(formatDate(new Date(2026, 9, 21, 23, 59))).toBe("Oct 21, 2026");
   });
 });
