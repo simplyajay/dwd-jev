@@ -34,6 +34,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth, useCurrentUser } from "@/features/auth/auth-context";
 import { useSettingsDialog } from "@/features/settings/use-settings-dialog";
+import { initials, ROLE_LABELS } from "@/features/users/user-labels";
 
 interface NavItem {
   label: string;
@@ -50,8 +51,6 @@ const NAV_ITEMS: NavItem[] = [
 // Palette: the active item is an amber block with dark ink.
 const ACTIVE_ITEM =
   "data-active:bg-sidebar-primary data-active:text-sidebar-primary-foreground data-active:hover:bg-sidebar-primary data-active:hover:text-sidebar-primary-foreground";
-
-const ROLE_LABELS = { administrator: "Administrator", user: "User" } as const;
 
 export function AppSidebar() {
   return (
@@ -70,7 +69,6 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <SidebarMenu>
-          <SettingsButton />
           <UserMenu />
         </SidebarMenu>
       </SidebarFooter>
@@ -144,26 +142,13 @@ function MainNav() {
   );
 }
 
-function SettingsButton() {
-  const { open } = useSettingsDialog();
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton tooltip="Settings" onClick={() => open()}>
-        <SettingsIcon />
-        <span>Settings</span>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
-
 function UserMenu() {
   const user = useCurrentUser();
   const { logout } = useAuth();
+  const { open: openSettings } = useSettingsDialog();
   const { isMobile, state } = useSidebar();
 
   const fullName = `${user.firstName} ${user.lastName}`;
-  const initials = `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
 
   return (
     <SidebarMenuItem>
@@ -176,7 +161,7 @@ function UserMenu() {
           >
             <Avatar className="size-8 rounded-md">
               <AvatarFallback className="rounded-md bg-sidebar-primary font-medium text-sidebar-primary-foreground text-xs">
-                {initials}
+                {initials(user)}
               </AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left leading-tight">
@@ -201,6 +186,10 @@ function UserMenu() {
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => openSettings()}>
+            <SettingsIcon />
+            Settings
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => logout()}>
             <LogOutIcon />
             Log out
