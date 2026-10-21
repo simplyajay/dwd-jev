@@ -4,24 +4,14 @@ import { Input } from "@/components/ui/input";
 
 interface TextFieldProps extends Omit<ComponentProps<typeof Input>, "aria-invalid"> {
   label: string;
-  /** Marks the label "(optional)". Purely visual -- validation lives in the schema. */
+  /** Shows "(optional)" on the label; visual only. */
   optional?: boolean;
   description?: ReactNode;
-  /** Shown under the input; also flags it invalid. Accepts a react-hook-form field error. */
+  /** Shown under the input; also marks it invalid. */
   error?: { message?: string };
 }
 
-/**
- * Label + input + error, wired for accessibility. Every other prop goes to the
- * input, so it takes react-hook-form's register() and any handler directly:
- *
- *   <TextField
- *     label="Username"
- *     error={errors.username}
- *     {...form.register("username")}
- *     onFocus={() => form.clearErrors("username")}
- *   />
- */
+/** Label, input and error wired for accessibility. Other props go to the input. */
 export function TextField({
   label,
   optional,

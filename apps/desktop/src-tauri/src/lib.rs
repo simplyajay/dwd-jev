@@ -15,8 +15,7 @@ struct HttpScope {
 
 pub fn run() {
     tauri::Builder::default()
-        // Must be registered first. A second launch focuses the running window
-        // instead of starting a new session that would rotate the refresh token.
+        // Must be first: a second launch focuses the window instead of rotating the refresh token.
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.unminimize();
@@ -25,9 +24,7 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
-            // The HTTP scope is granted here rather than in capabilities/*.json
-            // so it follows the compiled-in API URL: the webview can reach the
-            // backend and nothing else.
+            // Granted here, not in capabilities, so it follows the compiled-in API URL.
             let scope = HttpScope {
                 url: format!("{}/*", config::api_base_url()),
             };

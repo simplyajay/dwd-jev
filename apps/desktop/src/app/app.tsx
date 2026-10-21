@@ -27,9 +27,7 @@ function AppRouter() {
   const auth = useAuth();
   const { status } = auth.state;
 
-  // Re-run the route guards whenever the user signs in or out; they do the
-  // redirecting (see routes/_auth/route.tsx and routes/_app/route.tsx).
-  // Skipped while restoring: the router has no auth context until it mounts.
+  // Re-run the route guards (which redirect) on sign-in and sign-out, once restored.
   useEffect(() => {
     if (status !== "restoring") router.invalidate();
   }, [status]);

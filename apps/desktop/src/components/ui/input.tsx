@@ -6,9 +6,8 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
     <input
       type={type}
       data-slot="input"
-      // Desktop app, not a web page: no browser suggestions, autofill or
-      // spellcheck squiggles unless a caller opts back in. Chromium ignores
-      // "off" on password fields, so those get "new-password" instead.
+      // No autofill, suggestions or spellcheck by default. Chromium ignores "off"
+      // on password fields, hence "new-password".
       autoComplete={type === "password" ? "new-password" : "off"}
       autoCorrect="off"
       autoCapitalize="off"

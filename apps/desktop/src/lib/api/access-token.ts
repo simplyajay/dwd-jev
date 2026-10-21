@@ -1,7 +1,4 @@
-/**
- * The access token lives only in memory. The HTTP client reads it per request;
- * the auth provider sets it on sign-in/refresh and clears it on sign-out.
- */
+/** The access token, kept in memory only. */
 let accessToken: string | null = null;
 
 export function getAccessToken(): string | null {

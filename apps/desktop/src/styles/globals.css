@@ -58,10 +58,7 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/*
- * JEV Warm Theme. Values come from the palette; the ones marked "AA" were
- * darkened from the palette value so text meets WCAG AA (4.5:1).
- */
+/* JEV warm theme. "AA" values were darkened from the palette to meet WCAG AA. */
 :root {
   color-scheme: light;
 
@@ -156,12 +153,7 @@
   * {
     @apply border-border outline-ring/50;
 
-    /*
-     * Slim scrollbars that blend into whatever they sit on: the track is
-     * transparent (so the element background shows through) and the thumb is
-     * a faint tint of that element text color -- dark on light surfaces,
-     * light on the dark sidebar, in either theme.
-     */
+    /* Slim scrollbars: transparent track, thumb tinted from the element's text color. */
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, currentColor 20%, transparent) transparent;
   }

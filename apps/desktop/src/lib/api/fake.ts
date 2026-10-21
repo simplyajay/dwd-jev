@@ -1,11 +1,7 @@
 import type { JevListItem, JournalType } from "@dwd-jev/shared";
 import type { Api } from "./types";
 
-/*
- * In-memory stand-in for the endpoints that aren't wired to the backend yet.
- * Auth is real (see auth-api.ts); only the JEV list still comes from here.
- * Delete each part as its real implementation lands.
- */
+// In-memory stand-in for the JEV list until it's wired to the backend.
 
 const LATENCY_MS = 400;
 

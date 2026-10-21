@@ -1,9 +1,4 @@
-/*
- * The app runs in a WebView, which still behaves like a browser: right-click
- * menu, find bar, print, view source, reload. This turns those off so it feels
- * like a desktop app. (Input autocomplete/spellcheck is handled in
- * components/ui/input.tsx; general autofill in tauri.conf.json.)
- */
+// Turns off WebView browser behaviors (context menu, find, print...) so it feels like a desktop app.
 
 type Shortcut = { key: string; ctrl?: boolean; shift?: boolean };
 
@@ -47,7 +42,7 @@ function matches(event: KeyboardEvent, shortcut: Shortcut): boolean {
 export function disableBrowserBehaviors({ production }: { production: boolean }): void {
   const blocked = production ? [...ALWAYS_BLOCKED, ...BLOCKED_IN_PRODUCTION] : ALWAYS_BLOCKED;
 
-  // Capture phase, so this runs before any component handler can stop propagation.
+  // Capture phase: runs before component handlers can stop propagation.
   window.addEventListener(
     "keydown",
     (event) => {
@@ -56,7 +51,6 @@ export function disableBrowserBehaviors({ production }: { production: boolean })
     { capture: true },
   );
 
-  // The WebView's context menu (Back, Refresh, Search the web, Inspect...).
-  // Ctrl+C / Ctrl+X / Ctrl+V keep working in text fields.
+  // Blocks the WebView's context menu; clipboard shortcuts keep working.
   window.addEventListener("contextmenu", (event) => event.preventDefault());
 }

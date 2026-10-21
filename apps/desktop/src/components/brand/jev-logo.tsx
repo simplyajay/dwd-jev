@@ -3,10 +3,7 @@ import { PATH_EV, PATH_J_DOT, PATH_J_STEM, WORDMARK_TRANSFORM } from "./paths";
 
 type SvgProps = Omit<ComponentProps<"svg">, "viewBox" | "children">;
 
-/*
- * Letters are drawn in `currentColor`, so set the ink with a text-* class.
- * The j's dot is always the brand amber.
- */
+// Letters use currentColor (set it with text-*); the j's dot is always brand amber.
 
 function Wordmark() {
   return (
@@ -44,9 +41,8 @@ const CALCULATOR = "#E89E1C";
 const CALCULATOR_FACE = "#FFF3DC";
 
 /**
- * Wordmark + document/calculator icon + tagline. Used on the auth brand panel.
- * The calculator's cut-out stroke uses `--brand-panel` so it blends into the
- * panel it sits on.
+ * Wordmark, icon and tagline for the auth brand panel. The calculator's
+ * cut-out uses `--brand-panel` to blend into the panel.
  */
 export function JevLogo(props: SvgProps) {
   return (

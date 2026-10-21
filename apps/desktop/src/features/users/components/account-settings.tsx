@@ -5,11 +5,7 @@ import { FieldGroup } from "@/components/ui/field";
 import { useCurrentUser } from "@/features/auth/auth-context";
 import { SettingsSection } from "@/features/settings/components/settings-section";
 
-/*
- * Layout only for now: the forms are prefilled and editable but saving is not
- * wired. There is no update-user schema in @dwd-jev/shared yet -- when there
- * is, add it as the resolver and replace `notWiredYet` with the mutation.
- */
+// Layout only: saving isn't wired yet.
 const notWiredYet = (event: { preventDefault: () => void }) => event.preventDefault();
 
 export function AccountSettings() {

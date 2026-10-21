@@ -1,9 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 
-/**
- * Typed wrappers for the Rust commands in src-tauri/src/commands. They only
- * exist inside the Tauri window -- the app is not meant to run in a browser.
- */
+/** Typed wrappers for the Rust commands. They only exist inside the Tauri window. */
 
 export const secureStore = {
   saveRefreshToken: (token: string) => invoke<void>("save_refresh_token", { token }),
