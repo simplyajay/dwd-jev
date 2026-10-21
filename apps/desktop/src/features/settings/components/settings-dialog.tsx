@@ -42,7 +42,7 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="h-[min(40rem,85svh)] gap-0 overflow-hidden p-0 sm:max-w-4xl">
+      <DialogContent className="h-[80svh] w-[80vw] gap-0 overflow-hidden p-0 sm:max-w-none">
         <Tabs.Root
           orientation="vertical"
           value={currentTab.id}
