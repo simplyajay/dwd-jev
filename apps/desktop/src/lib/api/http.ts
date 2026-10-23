@@ -103,11 +103,9 @@ function toApiError(status: number, payload: unknown): ApiError {
   const parsed = ErrorBodySchema.safeParse(payload);
   if (!parsed.success) return new ApiError(status, UNEXPECTED_ERROR_MESSAGE);
 
-  // 400 and 5xx messages are raw internals, not meant for users.
-  const userFacing = status !== 400 && status < 500;
-  return new ApiError(
-    status,
-    userFacing ? parsed.data.message : UNEXPECTED_ERROR_MESSAGE,
-    parsed.data.details?.field,
-  );
+  // 5xx messages are internals. A 400 is meant for users only when it names
+  // the field it's about; otherwise it's raw validator output.
+  const field = parsed.data.details?.field;
+  const userFacing = status < 500 && (status !== 400 || field !== undefined);
+  return new ApiError(status, userFacing ? parsed.data.message : UNEXPECTED_ERROR_MESSAGE, field);
 }

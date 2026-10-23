@@ -205,6 +205,17 @@ describe("auth API errors", () => {
     expect(serverError.isUnauthorized).toBe(false);
   });
 
+  it("shows a 400's message when it names the field it's about", async () => {
+    const message = "New password must be different from your current password.";
+    respond(400, { code: 400, message, details: { field: "newPassword" } });
+
+    const error = await failure(authApi.login(CREDENTIALS));
+
+    expect(error.status).toBe(400);
+    expect(error.field).toBe("newPassword");
+    expect(error.message).toBe(message);
+  });
+
   it("reports an unreachable server as status 0", async () => {
     fetchMock.mockRejectedValueOnce(new Error("error sending request"));
 

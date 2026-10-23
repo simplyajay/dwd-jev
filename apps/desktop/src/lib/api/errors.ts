@@ -4,7 +4,7 @@
  */
 export class ApiError extends Error {
   readonly status: number;
-  /** The input the error is about, e.g. "username" (409) or "password" (403). */
+  /** The input the error is about, e.g. "username" (409), "password" (403) or "newPassword" (400). */
   readonly field: string | undefined;
 
   constructor(status: number, message: string, field?: string) {
