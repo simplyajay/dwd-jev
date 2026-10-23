@@ -1,5 +1,5 @@
 import { Tabs } from "radix-ui";
-import type { ReactNode } from "react";
+import { type ReactNode, useCallback, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useCurrentUser } from "@/features/auth/auth-context";
 import { ChartOfAccountsSettings } from "@/features/chart-of-accounts/components/chart-of-accounts-settings";
@@ -12,7 +12,9 @@ import {
   type SettingsTabId,
   SettingsTabIdSchema,
 } from "../settings-tabs";
+import { UnsavedChangesContext } from "../unsaved-changes";
 import { useSettingsDialog } from "../use-settings-dialog";
+import { DiscardChangesDialog } from "./discard-changes-dialog";
 import { SettingsSection } from "./settings-section";
 
 const PANELS: Record<SettingsTabId, () => ReactNode> = {
@@ -34,6 +36,18 @@ export function SettingsDialog() {
   const user = useCurrentUser();
   const { activeTab, isOpen, switchTab, close } = useSettingsDialog();
 
+  // Forms with unsaved edits; leaving the tab or closing asks before dropping them.
+  const unsaved = useRef(new Set<string>());
+  const reportUnsaved = useCallback((key: string, isUnsaved: boolean) => {
+    if (isUnsaved) unsaved.current.add(key);
+    else unsaved.current.delete(key);
+  }, []);
+  const [pendingLeave, setPendingLeave] = useState<(() => void) | null>(null);
+  const leave = (action: () => void) => {
+    if (unsaved.current.size > 0) setPendingLeave(() => action);
+    else action();
+  };
+
   const tabs = SETTINGS_TABS.filter((tab) => tab.isAvailable(user));
   // A URL can name a tab this user can't see; fall back rather than show nothing.
   const currentTab =
@@ -41,12 +55,12 @@ export function SettingsDialog() {
   if (!currentTab) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && leave(close)}>
       <DialogContent className="h-[80svh] w-[80vw] gap-0 overflow-hidden p-0 sm:max-w-none">
         <Tabs.Root
           orientation="vertical"
           value={currentTab.id}
-          onValueChange={(value) => switchTab(SettingsTabIdSchema.parse(value))}
+          onValueChange={(value) => leave(() => switchTab(SettingsTabIdSchema.parse(value)))}
           className="grid h-full min-h-0 grid-cols-[14rem_1fr]"
         >
           <div className="flex flex-col gap-4 border-r bg-muted/60 p-4">
@@ -78,11 +92,22 @@ export function SettingsDialog() {
                 className="min-h-0 overflow-y-auto p-6 pr-12 outline-none"
               >
                 <h2 className="mb-6 font-semibold text-lg">{label}</h2>
-                <Panel />
+                <UnsavedChangesContext.Provider value={reportUnsaved}>
+                  <Panel />
+                </UnsavedChangesContext.Provider>
               </Tabs.Content>
             );
           })}
         </Tabs.Root>
+
+        <DiscardChangesDialog
+          open={pendingLeave !== null}
+          onKeepEditing={() => setPendingLeave(null)}
+          onDiscard={() => {
+            pendingLeave?.();
+            setPendingLeave(null);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
