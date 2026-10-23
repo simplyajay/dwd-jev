@@ -5,7 +5,7 @@ import { ApiError, type AuthSession, api } from "@/lib/api";
 import { setAccessToken } from "@/lib/api/access-token";
 import { setSessionRefresher } from "@/lib/api/http";
 import { secureStore } from "@/lib/tauri/commands";
-import { AuthContext, type AuthState } from "./auth-context";
+import { AuthContext, type AuthState, type SessionUpdate } from "./auth-context";
 
 async function persistSession(session: AuthSession): Promise<SafeUserType> {
   setAccessToken(session.accessToken);
@@ -96,8 +96,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionRefresher(null);
   }, [markSessionEnded]);
 
+  const updateSession = useCallback(async ({ user, accessToken, refreshToken }: SessionUpdate) => {
+    if (accessToken && refreshToken) await persistSession({ accessToken, refreshToken, user });
+    setState((prev) => (prev.status === "signed-in" ? { ...prev, user } : prev));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ state, login, register, logout, leaveEndedSession: signOut }}>
+    <AuthContext.Provider
+      value={{ state, login, register, logout, leaveEndedSession: signOut, updateSession }}
+    >
       {children}
     </AuthContext.Provider>
   );

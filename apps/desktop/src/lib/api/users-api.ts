@@ -1,4 +1,4 @@
-import { UserDetailSchema, UserSummarySchema } from "@dwd-jev/shared";
+import { UpdateAccountResultSchema, UserDetailSchema, UserSummarySchema } from "@dwd-jev/shared";
 import { z } from "zod";
 import { request } from "./http";
 import type { Api } from "./types";
@@ -32,4 +32,20 @@ export const usersApi: Api["users"] = {
   setRole: async (id, input) => {
     await request({ method: "PATCH", path: `/api/admin/users/${id}/role`, body: input });
   },
+
+  updateProfile: (input) =>
+    request({
+      method: "PUT",
+      path: "/api/users/me/profile",
+      body: input,
+      schema: UserDetailSchema,
+    }),
+
+  updateAccount: (input) =>
+    request({
+      method: "PUT",
+      path: "/api/users/me/account",
+      body: input,
+      schema: UpdateAccountResultSchema,
+    }),
 };

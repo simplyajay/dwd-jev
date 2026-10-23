@@ -1,10 +1,8 @@
 import { CreateUserSchema } from "@dwd-jev/shared";
 import { z } from "zod";
+import { emptyToUndefined } from "@/lib/form-values";
 
 // Sign-up schemas from the shared CreateUserSchema, plus form-only concerns.
-
-/** Text inputs give "" for empty; optional fields should treat that as absent. */
-const emptyToUndefined = (value: unknown) => (value === "" ? undefined : value);
 
 export const PersonalInfoSchema = CreateUserSchema.pick({
   firstName: true,

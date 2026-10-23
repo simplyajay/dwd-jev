@@ -9,6 +9,12 @@ export type AuthState =
   /** The server ended the session; the app stays up behind a dialog until the user leaves. */
   | { status: "signed-in"; user: SafeUserType; sessionEnded?: true };
 
+export interface SessionUpdate {
+  user: SafeUserType;
+  accessToken?: string;
+  refreshToken?: string;
+}
+
 export interface AuthContextValue {
   state: AuthState;
   login: (input: LoginInput) => Promise<void>;
@@ -17,6 +23,8 @@ export interface AuthContextValue {
   logout: () => Promise<void>;
   /** Clears the ended session and goes to the login page. */
   leaveEndedSession: () => void;
+  /** After the user edits their own account. New tokens replace the stored session. */
+  updateSession: (update: SessionUpdate) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

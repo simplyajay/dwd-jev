@@ -8,6 +8,9 @@ import type {
   SafeUserType,
   SetUserRoleInput,
   SetUserStatusInput,
+  UpdateAccountInput,
+  UpdateAccountResult,
+  UpdateProfileInput,
   UserDetail,
   UserSummary,
 } from "@dwd-jev/shared";
@@ -39,6 +42,10 @@ export interface Api {
     setStatus(id: string, input: SetUserStatusInput): Promise<void>;
     /** Only the system account can change an administrator's role. */
     setRole(id: string, input: SetUserRoleInput): Promise<void>;
+    /** The signed-in user's own name and position. */
+    updateProfile(input: UpdateProfileInput): Promise<UserDetail>;
+    /** The signed-in user's sign-in details. Tokens come back only on a password change. */
+    updateAccount(input: UpdateAccountInput): Promise<UpdateAccountResult>;
   };
   jevs: {
     listByMonth(input: JevByMonthInput): Promise<PaginatedResult<JevListItem>>;
