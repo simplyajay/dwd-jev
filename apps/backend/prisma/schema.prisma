@@ -85,8 +85,26 @@ model User {
   lastUpdatedJevs Jev[]         @relation("JevLastUpdatedBy")
   deletedJevs     Jev[]         @relation("JevDeletedBy")
   jevRevisions    JevRevision[] @relation("JevRevisionUpdatedBy")
+  refreshToken    RefreshToken?
 
   @@map("users")
+}
+
+// One row per user, so logging in elsewhere ends the previous session.
+model RefreshToken {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @map("user_id") @db.Uuid
+  // SHA-256 of the token; the token itself is never stored.
+  tokenHash    String   @unique @map("token_hash")
+  // Must equal users.token_version for the token to be accepted.
+  tokenVersion Int      @map("token_version")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 // jev/dv/ada/check numbers are unique among non-deleted rows only, via
