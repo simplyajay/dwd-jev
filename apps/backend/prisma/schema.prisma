@@ -107,6 +107,16 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+// Fixed-window counters. Timestamptz because the upsert compares with now().
+model RateLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}
+
 // jev/dv/ada/check numbers are unique among non-deleted rows only, via
 // raw-SQL partial indexes (add_jev_unique_document_numbers).
 // Run `pnpm check:indexes` after every migration to confirm they still exist.
