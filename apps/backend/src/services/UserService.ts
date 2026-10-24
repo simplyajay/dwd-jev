@@ -7,6 +7,7 @@ import {
 } from "../errors/AppError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { formatFullName } from "../utils/fullName.js";
+import { inTransaction } from "../lib/transaction.js";
 import type {
   Role,
   SafeUserType,
@@ -157,17 +158,8 @@ export class UserService {
     password: string,
     redis: Redis,
   ): Promise<UserDetail> {
+    // The version bump also invalidates the user's refresh token.
     const updated = await this.updateManagedUser(id, adminId, password, { status }, redis);
-
-    // Best effort; refresh re-checks status.
-    if (status === "inactive") {
-      try {
-        await this.refreshTokenService.revokeAllForUser(id, redis);
-      } catch (err) {
-        console.warn(`[userService] refresh token revoke failed for "${id}".`, err);
-      }
-    }
-
     return toUserDetail(updated);
   }
 
@@ -244,7 +236,7 @@ export class UserService {
   async updateAccount(
     userId: string,
     input: UpdateAccountInput,
-  ): Promise<{ user: UserDetail; authState: AuthState | null }> {
+  ): Promise<{ user: UserDetail; authState?: AuthState; refreshToken?: string }> {
     const current = await this.userRepository.findWithPasswordById(userId);
     if (!current) throw new NotFoundError("User not found.");
 
@@ -296,18 +288,26 @@ export class UserService {
       if (existing) throw new ConflictError("Email is already in use.", "email");
     }
 
-    const user = await this.userRepository.updateAccount(userId, {
+    const data = {
       username: input.username,
       email,
       ...(input.newPassword && { password: await hashPassword(input.newPassword) }),
-    });
-    if (!user) throw new NotFoundError("User not found.");
-
-    // A password change bumps the version, ending other sessions.
-    return {
-      user: toUserDetail(user),
-      authState: input.newPassword ? toAuthState(user) : null,
     };
+
+    // A password change bumps the version; reissue in the same transaction so
+    // this session survives.
+    return inTransaction(async (tx) => {
+      const user = await this.userRepository.updateAccount(userId, data, tx);
+      if (!user) throw new NotFoundError("User not found.");
+      if (!data.password) return { user: toUserDetail(user) };
+
+      const refreshToken = await this.refreshTokenService.issue(
+        user.id,
+        user.tokenVersion,
+        tx,
+      );
+      return { user: toUserDetail(user), authState: toAuthState(user), refreshToken };
+    });
   }
 
   // Re-reads the admin from the DB. A wrong password is 403, not 401, so the

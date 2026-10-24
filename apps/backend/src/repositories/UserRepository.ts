@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma.js";
+import type { DbClient } from "../lib/transaction.js";
 import {
   nullIfNotFound,
   withUniqueConflict,
@@ -84,7 +85,7 @@ export interface IUserRepository {
   findWithPasswordById(id: string): Promise<UserRow | null>;
   findWithPasswordByUsername(username: string): Promise<UserRow | null>;
   findAuthState(id: string): Promise<AuthState | null>;
-  bumpTokenVersion(id: string): Promise<AuthState | null>;
+  bumpTokenVersion(id: string, client?: DbClient): Promise<AuthState | null>;
   findDetailById(id: string): Promise<UserDetailRow | null>;
   findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]>;
   findPendingUsers(): Promise<UserSummaryRow[]>;
@@ -97,7 +98,11 @@ export interface IUserRepository {
     onlyRegularUsers: boolean,
   ): Promise<UserDetailRow | null>;
   updateProfile(id: string, data: ProfileData): Promise<UserDetailRow | null>;
-  updateAccount(id: string, data: AccountData): Promise<UserDetailRow | null>;
+  updateAccount(
+    id: string,
+    data: AccountData,
+    client?: DbClient,
+  ): Promise<UserDetailRow | null>;
 }
 
 export class PrismaUserRepository implements IUserRepository {
@@ -126,9 +131,9 @@ export class PrismaUserRepository implements IUserRepository {
     return prisma.user.findUnique({ where: { id }, select: AUTH_STATE_SELECT });
   }
 
-  bumpTokenVersion(id: string): Promise<AuthState | null> {
+  bumpTokenVersion(id: string, client: DbClient = prisma): Promise<AuthState | null> {
     return nullIfNotFound(() =>
-      prisma.user.update({
+      client.user.update({
         where: { id },
         data: BUMP_TOKEN_VERSION,
         select: AUTH_STATE_SELECT,
@@ -218,10 +223,14 @@ export class PrismaUserRepository implements IUserRepository {
     );
   }
 
-  updateAccount(id: string, data: AccountData): Promise<UserDetailRow | null> {
+  updateAccount(
+    id: string,
+    data: AccountData,
+    client: DbClient = prisma,
+  ): Promise<UserDetailRow | null> {
     return withUniqueConflict(USER_UNIQUE_FIELDS, () =>
       nullIfNotFound(() =>
-        prisma.user.update({
+        client.user.update({
           where: { id },
           data: { ...data, ...(data.password && BUMP_TOKEN_VERSION) },
           omit: { password: true },

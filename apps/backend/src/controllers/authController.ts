@@ -12,10 +12,7 @@ export const login = asyncHandler(async (req: Request<any, any, LoginInput>, res
 export const refresh = asyncHandler(
   async (req: Request<any, any, RefreshTokenInput>, res) => {
     const { refreshToken: oldRefreshToken } = req.body;
-    const { accessToken, refreshToken } = await authService.refresh(
-      oldRefreshToken,
-      redis,
-    );
+    const { accessToken, refreshToken } = await authService.refresh(oldRefreshToken);
     res.success({ accessToken, refreshToken }, 200);
   },
 );

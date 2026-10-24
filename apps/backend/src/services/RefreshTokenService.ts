@@ -1,25 +1,21 @@
-import { randomBytes } from "node:crypto";
-import { ServiceUnavailableError, UnauthorizedError } from "../errors/AppError.js";
+import { createHash, randomBytes } from "node:crypto";
+import { UnauthorizedError } from "../errors/AppError.js";
 import { signAccessToken } from "../utils/jwt.js";
-import type { Redis } from "ioredis";
+import type { DbClient } from "../lib/transaction.js";
+import type { IRefreshTokenRepository } from "../repositories/RefreshTokenRepository.js";
 import type { IUserRepository } from "../repositories/UserRepository.js";
 
-const REFRESH_TOKEN_TTL_SECONDS = 28800; // 8 hours
+const REFRESH_TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
 
-const refreshTokenKey = (token: string): string => `refresh:${token}`;
+const generateToken = (): string => randomBytes(32).toString("hex");
 
-const userActiveTokenKey = (userId: string): string =>
-  `user:${userId}:active_refresh_token`;
+const hashToken = (token: string): string =>
+  createHash("sha256").update(token).digest("hex");
 
-// Refresh tokens live only in Redis, so an outage is a 503, not a 500.
-const withRedis = async <T>(operation: () => Promise<T>): Promise<T> => {
-  try {
-    return await operation();
-  } catch (err) {
-    console.warn("[refreshToken] Redis unavailable.", err);
-    throw new ServiceUnavailableError();
-  }
-};
+const newExpiry = (): Date => new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+const invalidToken = (): UnauthorizedError =>
+  new UnauthorizedError("Refresh token is invalid or expired.");
 
 export interface RotatedTokens {
   accessToken: string;
@@ -27,57 +23,39 @@ export interface RotatedTokens {
 }
 
 export class RefreshTokenService {
-  constructor(private readonly userRepository: IUserRepository) {}
+  constructor(
+    private readonly userRepository: IUserRepository,
+    private readonly refreshTokenRepository: IRefreshTokenRepository,
+  ) {}
 
-  // For callers that must fail before changing anything.
-  async ensureAvailable(redis: Redis): Promise<void> {
-    await withRedis(() => redis.ping());
-  }
-
-  issueRefreshToken(userId: string, redis: Redis): Promise<string> {
-    return withRedis(async () => {
-      const existingToken = await redis.get(userActiveTokenKey(userId));
-
-      if (existingToken) await redis.del(refreshTokenKey(existingToken));
-
-      const token = randomBytes(32).toString("hex");
-      await redis.set(refreshTokenKey(token), userId, "EX", REFRESH_TOKEN_TTL_SECONDS);
-      await redis.set(userActiveTokenKey(userId), token, "EX", REFRESH_TOKEN_TTL_SECONDS);
-      return token;
-    });
+  // Replaces the user's token; pass the version the token is valid for.
+  async issue(userId: string, tokenVersion: number, client?: DbClient): Promise<string> {
+    const token = generateToken();
+    await this.refreshTokenRepository.replaceForUser(
+      { userId, tokenHash: hashToken(token), tokenVersion, expiresAt: newExpiry() },
+      client,
+    );
+    return token;
   }
 
   // Returns the token's owner, or null if the token was unknown.
-  revokeRefreshToken(token: string, redis: Redis): Promise<string | null> {
-    return withRedis(async () => {
-      const userId = await redis.get(refreshTokenKey(token));
-      await redis.del(refreshTokenKey(token));
-      if (userId) await redis.del(userActiveTokenKey(userId));
-      return userId;
-    });
+  revoke(token: string, client?: DbClient): Promise<string | null> {
+    return this.refreshTokenRepository.deleteByHash(hashToken(token), client);
   }
 
-  revokeAllForUser(userId: string, redis: Redis): Promise<void> {
-    return withRedis(async () => {
-      const token = await redis.get(userActiveTokenKey(userId));
-      if (token) await redis.del(refreshTokenKey(token));
-      await redis.del(userActiveTokenKey(userId));
-    });
-  }
+  async rotate(oldToken: string): Promise<RotatedTokens> {
+    const refreshToken = generateToken();
+    const rotated = await this.refreshTokenRepository.rotate(
+      hashToken(oldToken),
+      hashToken(refreshToken),
+      newExpiry(),
+    );
+    if (!rotated) throw invalidToken();
 
-  async rotateRefreshToken(oldToken: string, redis: Redis): Promise<RotatedTokens> {
-    const userId = await withRedis(() => redis.get(refreshTokenKey(oldToken)));
-    if (!userId) {
-      throw new UnauthorizedError("Refresh token is invalid or expired.");
-    }
-
-    // Delete first so a token can never be used twice.
-    await withRedis(() => redis.del(refreshTokenKey(oldToken)));
-
-    // From the DB, so a deactivation applies immediately.
-    const user = await this.userRepository.findAuthState(userId);
-    if (!user || user.status !== "active") {
-      throw new UnauthorizedError("Refresh token is invalid or expired.");
+    // Any version bump since issue (role, status, password, logout) ends the session.
+    const user = await this.userRepository.findAuthState(rotated.userId);
+    if (!user || user.status !== "active" || user.tokenVersion !== rotated.tokenVersion) {
+      throw invalidToken();
     }
 
     const accessToken = signAccessToken({
@@ -85,8 +63,10 @@ export class RefreshTokenService {
       role: user.role,
       ver: user.tokenVersion,
     });
-    const refreshToken = await this.issueRefreshToken(user.id, redis);
-
     return { accessToken, refreshToken };
+  }
+
+  deleteExpired(): Promise<number> {
+    return this.refreshTokenRepository.deleteExpired();
   }
 }

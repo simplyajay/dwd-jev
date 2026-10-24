@@ -1,4 +1,5 @@
 import { UnauthorizedError } from "../errors/AppError.js";
+import { inTransaction } from "../lib/transaction.js";
 import { signAccessToken } from "../utils/jwt.js";
 import type { Redis } from "ioredis";
 import type {
@@ -9,6 +10,7 @@ import type {
 import type { RefreshTokenService, RotatedTokens } from "./RefreshTokenService.js";
 import type { UserService } from "./UserService.js";
 import type { AuthStateService } from "./AuthStateService.js";
+import type { IUserRepository } from "../repositories/UserRepository.js";
 import type { SafeUserType } from "@dwd-jev/shared";
 
 export interface LoginResult {
@@ -22,16 +24,25 @@ export class AuthService {
     private readonly userService: UserService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly authStateService: AuthStateService,
+    private readonly userRepository: IUserRepository,
   ) {}
 
-  // Refresh token first, so a Redis outage fails the login without ending the
-  // current session.
   async login(input: LoginInput, redis: Redis): Promise<LoginResult> {
     const user = await this.userService.verifyCredentials(input);
-    const refreshToken = await this.refreshTokenService.issueRefreshToken(user.id, redis);
-    const state = await this.authStateService.bump(user.id, redis);
-    if (!state) throw new UnauthorizedError("Invalid username or password.");
 
+    const { state, refreshToken } = await inTransaction(async (tx) => {
+      const state = await this.userRepository.bumpTokenVersion(user.id, tx);
+      if (!state) throw new UnauthorizedError("Invalid username or password.");
+      const refreshToken = await this.refreshTokenService.issue(
+        state.id,
+        state.tokenVersion,
+        tx,
+      );
+      return { state, refreshToken };
+    });
+
+    // After commit, so the cache never holds an uncommitted version.
+    await this.authStateService.cache(state, redis);
     const accessToken = signAccessToken({
       sub: state.id,
       role: state.role,
@@ -40,8 +51,8 @@ export class AuthService {
     return { accessToken, refreshToken, user };
   }
 
-  refresh(oldRefreshToken: string, redis: Redis): Promise<RotatedTokens> {
-    return this.refreshTokenService.rotateRefreshToken(oldRefreshToken, redis);
+  refresh(oldRefreshToken: string): Promise<RotatedTokens> {
+    return this.refreshTokenService.rotate(oldRefreshToken);
   }
 
   async updateAccount(
@@ -49,11 +60,11 @@ export class AuthService {
     input: UpdateAccountInput,
     redis: Redis,
   ): Promise<UpdateAccountResult> {
-    // Fail before the password write (which ends the session) if Redis is down.
-    if (input.newPassword) await this.refreshTokenService.ensureAvailable(redis);
-
-    const { user, authState } = await this.userService.updateAccount(userId, input);
-    if (!authState) return { user };
+    const { user, authState, refreshToken } = await this.userService.updateAccount(
+      userId,
+      input,
+    );
+    if (!authState || !refreshToken) return { user };
 
     await this.authStateService.cache(authState, redis);
     const accessToken = signAccessToken({
@@ -61,12 +72,14 @@ export class AuthService {
       role: authState.role,
       ver: authState.tokenVersion,
     });
-    const refreshToken = await this.refreshTokenService.issueRefreshToken(user.id, redis);
     return { user, accessToken, refreshToken };
   }
 
   async logout(refreshToken: string, redis: Redis): Promise<void> {
-    const userId = await this.refreshTokenService.revokeRefreshToken(refreshToken, redis);
-    if (userId) await this.authStateService.bump(userId, redis);
+    const state = await inTransaction(async (tx) => {
+      const userId = await this.refreshTokenService.revoke(refreshToken, tx);
+      return userId ? this.userRepository.bumpTokenVersion(userId, tx) : null;
+    });
+    if (state) await this.authStateService.cache(state, redis);
   }
 }
