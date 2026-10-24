@@ -16,7 +16,7 @@ const refreshTokenRepository = new PrismaRefreshTokenRepository();
 export const rateLimitRepository = new PrismaRateLimitRepository();
 
 export const authStateService = new AuthStateService(userRepository);
-const refreshTokenService = new RefreshTokenService(
+export const refreshTokenService = new RefreshTokenService(
   userRepository,
   refreshTokenRepository,
 );

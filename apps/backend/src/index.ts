@@ -5,6 +5,7 @@ import { notFoundHandler } from "./middleware/notFoundHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { responseShape } from "./middleware/responseShape.js";
 import { router } from "./routes/index.js";
+import { startSweeps } from "./sweeps.js";
 
 const app = express();
 
@@ -23,4 +24,5 @@ app.set("json replacer", (_key: string, value: unknown) =>
 
 app.listen(env.PORT, () => {
   console.log(`Server listening on port ${env.PORT}`);
+  startSweeps();
 });
