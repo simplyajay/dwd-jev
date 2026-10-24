@@ -1,5 +1,5 @@
 import type { Request, RequestHandler } from "express";
-import { redis } from "../lib/redis.js";
+import { rateLimitRepository } from "../container.js";
 import { TooManyRequestsError } from "../errors/AppError.js";
 
 interface RateLimitOptions {
@@ -9,16 +9,7 @@ interface RateLimitOptions {
   keyBy?: (req: Request) => string | undefined;
 }
 
-// Atomic, so a key can't be left without a TTL and block forever.
-const INCR_WITH_TTL = `
-local count = redis.call("INCR", KEYS[1])
-if redis.call("TTL", KEYS[1]) == -1 then
-  redis.call("EXPIRE", KEYS[1], ARGV[1])
-end
-return count
-`;
-
-// Fixed-window counter, per IP unless keyBy is given. Fails open if Redis is down.
+// Fixed-window counter, per IP unless keyBy is given. Fails open if the DB is down.
 export const rateLimit = ({
   windowSeconds,
   max,
@@ -26,10 +17,10 @@ export const rateLimit = ({
   keyBy = (req) => req.ip,
 }: RateLimitOptions): RequestHandler => {
   return async (req, _res, next) => {
-    const key = `ratelimit:${keyPrefix}:${keyBy(req) ?? "unknown"}`;
+    const key = `${keyPrefix}:${keyBy(req) ?? "unknown"}`;
 
     try {
-      const count = (await redis.eval(INCR_WITH_TTL, 1, key, windowSeconds)) as number;
+      const count = await rateLimitRepository.hit(key, windowSeconds);
 
       if (count > max) {
         next(new TooManyRequestsError());
