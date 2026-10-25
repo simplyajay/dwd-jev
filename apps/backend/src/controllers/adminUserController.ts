@@ -5,7 +5,6 @@ import type {
   SetUserStatusInput,
 } from "@dwd-jev/shared";
 import { userService } from "../container.js";
-import { redis } from "../lib/redis.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const getPendingUsers = asyncHandler(async (_req, res) => {
@@ -40,7 +39,6 @@ export const setUserStatus = asyncHandler<
     status,
     req.user!.sub,
     password,
-    redis,
   );
   res.success(user, 200);
 });
@@ -53,7 +51,6 @@ export const setUserRole = asyncHandler<Request<{ id: string }, any, SetUserRole
       role,
       req.user!.sub,
       password,
-      redis,
     );
     res.success(user, 200);
   },

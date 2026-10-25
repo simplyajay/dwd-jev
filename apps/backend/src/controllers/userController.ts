@@ -5,7 +5,6 @@ import type {
   UpdateProfileInput,
 } from "@dwd-jev/shared";
 import { authService, userService } from "../container.js";
-import { redis } from "../lib/redis.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 export const createUser = asyncHandler(async (req, res) => {
@@ -32,7 +31,7 @@ export const updateMyProfile = asyncHandler<Request<any, any, UpdateProfileInput
 
 export const updateMyAccount = asyncHandler<Request<any, any, UpdateAccountInput>>(
   async (req, res) => {
-    const result = await authService.updateAccount(req.user!.sub, req.body, redis);
+    const result = await authService.updateAccount(req.user!.sub, req.body);
     res.success(result, 200);
   },
 );

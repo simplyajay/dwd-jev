@@ -20,9 +20,7 @@ import type {
   UpdateAccountInput,
   UpdateProfileInput,
 } from "@dwd-jev/shared";
-import type { Redis } from "ioredis";
 import type { RefreshTokenService } from "./RefreshTokenService.js";
-import type { AuthStateService } from "./AuthStateService.js";
 import type {
   ActiveStatus,
   AuthState,
@@ -77,7 +75,6 @@ export class UserService {
   constructor(
     private readonly userRepository: IUserRepository,
     private readonly refreshTokenService: RefreshTokenService,
-    private readonly authStateService: AuthStateService,
   ) {}
 
   async createUser(input: CreateUserInput): Promise<SafeUserType> {
@@ -156,10 +153,9 @@ export class UserService {
     status: ActiveStatus,
     adminId: string,
     password: string,
-    redis: Redis,
   ): Promise<UserDetail> {
     // The version bump also invalidates the user's refresh token.
-    const updated = await this.updateManagedUser(id, adminId, password, { status }, redis);
+    const updated = await this.updateManagedUser(id, adminId, password, { status });
     return toUserDetail(updated);
   }
 
@@ -168,9 +164,8 @@ export class UserService {
     role: Role,
     adminId: string,
     password: string,
-    redis: Redis,
   ): Promise<UserDetail> {
-    const updated = await this.updateManagedUser(id, adminId, password, { role }, redis);
+    const updated = await this.updateManagedUser(id, adminId, password, { role });
     return toUserDetail(updated);
   }
 
@@ -180,7 +175,6 @@ export class UserService {
     adminId: string,
     password: string,
     data: ManagedUserData,
-    redis: Redis,
   ): Promise<UserDetailRow> {
     const field = "status" in data ? "status" : "role";
     const admin = await this.confirmAdminPassword(adminId, password);
@@ -209,7 +203,6 @@ export class UserService {
       );
     }
 
-    await this.authStateService.cache(toAuthState(updated), redis);
     return updated;
   }
 

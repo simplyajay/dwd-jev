@@ -1,7 +1,6 @@
 import { UnauthorizedError } from "../errors/AppError.js";
 import { inTransaction } from "../lib/transaction.js";
 import { signAccessToken } from "../utils/jwt.js";
-import type { Redis } from "ioredis";
 import type {
   LoginInput,
   UpdateAccountInput,
@@ -9,7 +8,6 @@ import type {
 } from "@dwd-jev/shared";
 import type { RefreshTokenService, RotatedTokens } from "./RefreshTokenService.js";
 import type { UserService } from "./UserService.js";
-import type { AuthStateService } from "./AuthStateService.js";
 import type { IUserRepository } from "../repositories/UserRepository.js";
 import type { SafeUserType } from "@dwd-jev/shared";
 
@@ -23,11 +21,10 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly refreshTokenService: RefreshTokenService,
-    private readonly authStateService: AuthStateService,
     private readonly userRepository: IUserRepository,
   ) {}
 
-  async login(input: LoginInput, redis: Redis): Promise<LoginResult> {
+  async login(input: LoginInput): Promise<LoginResult> {
     const user = await this.userService.verifyCredentials(input);
 
     const { state, refreshToken } = await inTransaction(async (tx) => {
@@ -41,8 +38,6 @@ export class AuthService {
       return { state, refreshToken };
     });
 
-    // After commit, so the cache never holds an uncommitted version.
-    await this.authStateService.cache(state, redis);
     const accessToken = signAccessToken({
       sub: state.id,
       role: state.role,
@@ -58,7 +53,6 @@ export class AuthService {
   async updateAccount(
     userId: string,
     input: UpdateAccountInput,
-    redis: Redis,
   ): Promise<UpdateAccountResult> {
     const { user, authState, refreshToken } = await this.userService.updateAccount(
       userId,
@@ -66,7 +60,6 @@ export class AuthService {
     );
     if (!authState || !refreshToken) return { user };
 
-    await this.authStateService.cache(authState, redis);
     const accessToken = signAccessToken({
       sub: authState.id,
       role: authState.role,
@@ -75,11 +68,10 @@ export class AuthService {
     return { user, accessToken, refreshToken };
   }
 
-  async logout(refreshToken: string, redis: Redis): Promise<void> {
-    const state = await inTransaction(async (tx) => {
+  async logout(refreshToken: string): Promise<void> {
+    await inTransaction(async (tx) => {
       const userId = await this.refreshTokenService.revoke(refreshToken, tx);
-      return userId ? this.userRepository.bumpTokenVersion(userId, tx) : null;
+      if (userId) await this.userRepository.bumpTokenVersion(userId, tx);
     });
-    if (state) await this.authStateService.cache(state, redis);
   }
 }

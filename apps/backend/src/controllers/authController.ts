@@ -1,11 +1,10 @@
 import { authService } from "../container.js";
-import { redis } from "../lib/redis.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import type { LoginInput, RefreshTokenInput } from "@dwd-jev/shared";
 import type { Request } from "express";
 
 export const login = asyncHandler(async (req: Request<any, any, LoginInput>, res) => {
-  const { accessToken, refreshToken, user } = await authService.login(req.body, redis);
+  const { accessToken, refreshToken, user } = await authService.login(req.body);
   res.success({ accessToken, refreshToken, user }, 200);
 });
 
@@ -20,7 +19,7 @@ export const refresh = asyncHandler(
 export const logout = asyncHandler(
   async (req: Request<any, any, RefreshTokenInput>, res) => {
     const { refreshToken } = req.body;
-    await authService.logout(refreshToken, redis);
+    await authService.logout(refreshToken);
     res.success(null, 200);
   },
 );

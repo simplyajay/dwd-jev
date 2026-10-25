@@ -1,7 +1,6 @@
 import type { RequestHandler } from "express";
-import { authStateService } from "../container.js";
+import { userRepository } from "../container.js";
 import { UnauthorizedError } from "../errors/AppError.js";
-import { redis } from "../lib/redis.js";
 import { verifyAccessToken, type AccessTokenPayload } from "../utils/jwt.js";
 
 declare global {
@@ -13,7 +12,7 @@ declare global {
 }
 
 // Mounted per route (register and login need no token). Status and role come
-// from the DB via the cache, not the token.
+// from the DB, not the token.
 export const authenticate: RequestHandler = async (req, _res, next) => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
@@ -30,7 +29,7 @@ export const authenticate: RequestHandler = async (req, _res, next) => {
   }
 
   try {
-    const state = await authStateService.get(payload.sub, payload.ver, redis);
+    const state = await userRepository.findAuthState(payload.sub);
     if (!state || state.status !== "active" || state.tokenVersion !== payload.ver) {
       next(new UnauthorizedError("Your session is no longer valid. Please log in again."));
       return;
