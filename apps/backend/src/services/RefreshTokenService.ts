@@ -4,6 +4,7 @@ import { signAccessToken } from "../utils/jwt.js";
 import type { DbClient } from "../lib/transaction.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshTokenRepository.js";
 import type { IUserRepository } from "../repositories/UserRepository.js";
+import type { SafeUserType } from "@dwd-jev/shared";
 
 const REFRESH_TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
 
@@ -20,6 +21,7 @@ const invalidToken = (): UnauthorizedError =>
 export interface RotatedTokens {
   accessToken: string;
   refreshToken: string;
+  user: SafeUserType;
 }
 
 export class RefreshTokenService {
@@ -53,17 +55,22 @@ export class RefreshTokenService {
     if (!rotated) throw invalidToken();
 
     // Any version bump since issue (role, status, password, logout) ends the session.
-    const user = await this.userRepository.findAuthState(rotated.userId);
-    if (!user || user.status !== "active" || user.tokenVersion !== rotated.tokenVersion) {
+    const found = await this.userRepository.findSessionUser(rotated.userId);
+    if (
+      !found ||
+      found.status !== "active" ||
+      found.tokenVersion !== rotated.tokenVersion
+    ) {
       throw invalidToken();
     }
 
+    const { tokenVersion, ...user } = found;
     const accessToken = signAccessToken({
       sub: user.id,
       role: user.role,
-      ver: user.tokenVersion,
+      ver: tokenVersion,
     });
-    return { accessToken, refreshToken };
+    return { accessToken, refreshToken, user };
   }
 
   deleteExpired(): Promise<number> {

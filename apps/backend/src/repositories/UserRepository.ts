@@ -72,6 +72,9 @@ export type AuthState = Pick<UserType, "id" | "status" | "role"> & {
   tokenVersion: number;
 };
 
+// tokenVersion is internal; callers strip it before responding.
+export type SessionUserRow = SafeUserType & { tokenVersion: number };
+
 // tokenVersion is internal; the service strips it before responding.
 export type UserDetailRow = SafeUserType & {
   tokenVersion: number;
@@ -85,6 +88,7 @@ export interface IUserRepository {
   findWithPasswordById(id: string): Promise<UserRow | null>;
   findWithPasswordByUsername(username: string): Promise<UserRow | null>;
   findAuthState(id: string): Promise<AuthState | null>;
+  findSessionUser(id: string): Promise<SessionUserRow | null>;
   bumpTokenVersion(id: string, client?: DbClient): Promise<AuthState | null>;
   findDetailById(id: string): Promise<UserDetailRow | null>;
   findApprovedUsers(includeInactive: boolean): Promise<UserSummaryRow[]>;
@@ -129,6 +133,10 @@ export class PrismaUserRepository implements IUserRepository {
 
   findAuthState(id: string): Promise<AuthState | null> {
     return prisma.user.findUnique({ where: { id }, select: AUTH_STATE_SELECT });
+  }
+
+  findSessionUser(id: string): Promise<SessionUserRow | null> {
+    return prisma.user.findUnique({ where: { id }, omit: { password: true } });
   }
 
   bumpTokenVersion(id: string, client: DbClient = prisma): Promise<AuthState | null> {
