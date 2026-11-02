@@ -7,7 +7,14 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-import { type KeyboardEvent, type ReactNode, useRef } from "react";
+import { Loader2Icon } from "lucide-react";
+import {
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+  type SyntheticEvent,
+  useRef,
+} from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useElementWidth } from "@/hooks/use-element-width";
 import { cn } from "@/lib/utils";
@@ -37,6 +44,8 @@ interface DataGridProps<TData extends RowData> {
   /** Accessible name for the grid. */
   label: string;
   isLoading?: boolean;
+  /** What the body shows while loading: placeholder rows, or one spinner filling it. */
+  loadingIndicator?: "skeleton" | "spinner";
   emptyMessage?: ReactNode;
   /** Makes rows clickable, and focusable for Enter or Space. */
   onRowClick?: (row: TData) => void;
@@ -45,6 +54,13 @@ interface DataGridProps<TData extends RowData> {
 
 const SKELETON_ROWS = 8;
 const CELL = "flex min-w-0 items-center px-4";
+const CONTROLS = "a, button, input, select, textarea";
+
+/** False for events from a control in the row or a portal it opened (portals bubble in React). */
+function isRowEvent(event: SyntheticEvent<HTMLElement>): boolean {
+  const target = event.target as Element;
+  return event.currentTarget.contains(target) && !target.closest(CONTROLS);
+}
 
 /** Div + CSS grid table: rows share one column template, so the empty state can span them all. */
 export function DataGrid<TData extends RowData>({
@@ -53,6 +69,7 @@ export function DataGrid<TData extends RowData>({
   getRowId,
   label,
   isLoading = false,
+  loadingIndicator = "skeleton",
   emptyMessage = "No data",
   onRowClick,
   className,
@@ -73,6 +90,20 @@ export function DataGrid<TData extends RowData>({
   const minWidth = headers.reduce((total, header) => total + header.getSize(), 0);
   const alignClass = (meta: DataGridColumnMeta | undefined) =>
     meta?.align === "right" && "justify-end text-right";
+
+  // One cell across all columns, pinned to the visible width so its content stays centred.
+  const spanningRow = (content: ReactNode) => (
+    <div role="row" className="flex flex-1">
+      <div
+        role="cell"
+        aria-colspan={headers.length}
+        className="sticky left-0 flex min-h-40 items-center justify-center p-6 text-center text-muted-foreground text-sm"
+        style={{ width: viewportWidth ?? "100%" }}
+      >
+        {content}
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -105,69 +136,72 @@ export function DataGrid<TData extends RowData>({
         </div>
 
         <div role="rowgroup" className="flex flex-1 flex-col">
-          {isLoading ? (
-            Array.from({ length: SKELETON_ROWS }, (_, index) => (
-              <div
-                // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder rows
-                key={index}
-                role="row"
-                className="grid border-table-divider border-b last:border-b-0"
-                style={{ gridTemplateColumns }}
-              >
-                {headers.map((header) => (
-                  <div key={header.id} role="cell" className={cn(CELL, "h-11")}>
-                    <Skeleton className="h-4 w-2/3" />
-                  </div>
-                ))}
-              </div>
-            ))
-          ) : rows.length === 0 ? (
-            <div role="row" className="flex flex-1">
-              {/* One cell across all columns, pinned to the visible width so the message stays centred. */}
-              <div
-                role="cell"
-                aria-colspan={headers.length}
-                className="sticky left-0 flex min-h-40 items-center justify-center p-6 text-center text-muted-foreground text-sm"
-                style={{ width: viewportWidth ?? "100%" }}
-              >
-                {emptyMessage}
-              </div>
-            </div>
-          ) : (
-            rows.map((row) => (
-              <div
-                key={row.id}
-                role="row"
-                className={cn(
-                  "grid border-table-divider border-b last:border-b-0 hover:bg-muted/50",
-                  onRowClick &&
-                    "cursor-pointer outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset",
-                )}
-                style={{ gridTemplateColumns }}
-                {...(onRowClick && {
-                  tabIndex: 0,
-                  onClick: () => onRowClick(row.original),
-                  onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
-                    if (event.key !== "Enter" && event.key !== " ") return;
-                    event.preventDefault(); // Space would scroll the grid
-                    onRowClick(row.original);
-                  },
-                })}
-              >
-                {row.getAllCells().map((cell) => (
+          {isLoading && loadingIndicator === "spinner"
+            ? spanningRow(
+                <Loader2Icon
+                  role="status"
+                  aria-label={`Loading ${label.toLowerCase()}`}
+                  className="size-8 animate-spin"
+                />,
+              )
+            : isLoading
+              ? Array.from({ length: SKELETON_ROWS }, (_, index) => (
                   <div
-                    key={cell.id}
-                    role="cell"
-                    className={cn(CELL, "h-11 text-sm", alignClass(cell.column.columnDef.meta))}
+                    // biome-ignore lint/suspicious/noArrayIndexKey: static placeholder rows
+                    key={index}
+                    role="row"
+                    className="grid border-table-divider border-b last:border-b-0"
+                    style={{ gridTemplateColumns }}
                   >
-                    <span className="truncate">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </span>
+                    {headers.map((header) => (
+                      <div key={header.id} role="cell" className={cn(CELL, "h-11")}>
+                        <Skeleton className="h-4 w-2/3" />
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ))
-          )}
+                ))
+              : rows.length === 0
+                ? spanningRow(emptyMessage)
+                : rows.map((row) => (
+                    <div
+                      key={row.id}
+                      role="row"
+                      className={cn(
+                        "grid border-table-divider border-b last:border-b-0 hover:bg-muted/50",
+                        onRowClick &&
+                          "cursor-pointer outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-inset",
+                      )}
+                      style={{ gridTemplateColumns }}
+                      {...(onRowClick && {
+                        tabIndex: 0,
+                        onClick: (event: MouseEvent<HTMLDivElement>) => {
+                          if (isRowEvent(event)) onRowClick(row.original);
+                        },
+                        onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
+                          if (!isRowEvent(event)) return;
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault(); // Space would scroll the grid
+                          onRowClick(row.original);
+                        },
+                      })}
+                    >
+                      {row.getAllCells().map((cell) => (
+                        <div
+                          key={cell.id}
+                          role="cell"
+                          className={cn(
+                            CELL,
+                            "h-11 text-sm",
+                            alignClass(cell.column.columnDef.meta),
+                          )}
+                        >
+                          <span className="truncate">
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
         </div>
       </div>
     </div>

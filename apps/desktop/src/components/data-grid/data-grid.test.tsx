@@ -67,6 +67,14 @@ describe("DataGrid", () => {
     expect(screen.getByText("No data")).toBeInTheDocument();
   });
 
+  it("can show one spinner across the body while loading, keeping the header", () => {
+    renderGrid({ isLoading: true, loadingIndicator: "spinner" });
+
+    expect(screen.getByRole("status", { name: "Loading fruits" })).toBeInTheDocument();
+    expect(screen.getAllByRole("columnheader")).toHaveLength(2);
+    expect(screen.queryByText("Apple")).not.toBeInTheDocument();
+  });
+
   it("shows placeholder rows instead of data or the empty state while loading", () => {
     renderGrid({ data: [], isLoading: true });
 
@@ -93,6 +101,33 @@ describe("DataGrid row clicks", () => {
       "Banana",
       "Banana",
     ]);
+  });
+
+  it("ignores clicks and keys on a control inside the row", async () => {
+    const onRowClick = vi.fn();
+    const onButton = vi.fn();
+    const user = userEvent.setup();
+    renderGrid({
+      onRowClick,
+      columns: [
+        ...columns,
+        column.display({
+          id: "actions",
+          cell: () => (
+            <button type="button" onClick={onButton}>
+              Menu
+            </button>
+          ),
+        }),
+      ],
+    });
+    const [button] = screen.getAllByRole("button", { name: "Menu" });
+
+    await user.click(button as HTMLElement);
+    await user.keyboard("{Enter}");
+
+    expect(onButton).toHaveBeenCalledTimes(2);
+    expect(onRowClick).not.toHaveBeenCalled();
   });
 
   it("leaves rows out of the tab order when they don't open anything", () => {

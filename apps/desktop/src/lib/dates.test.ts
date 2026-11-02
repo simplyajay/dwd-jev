@@ -1,4 +1,16 @@
-import { formatDate, formatDateOnly } from "./dates";
+import { formatDate, formatDateOnly, parseDateOnly, toDateOnly } from "./dates";
+
+describe("parseDateOnly and toDateOnly", () => {
+  it("round-trip a calendar day through local time", () => {
+    expect(parseDateOnly("2026-01-05")).toEqual(new Date(2026, 0, 5));
+    expect(toDateOnly(new Date(2026, 0, 5, 23, 59))).toBe("2026-01-05");
+  });
+
+  it("gives undefined for an empty or malformed value", () => {
+    expect(parseDateOnly("")).toBeUndefined();
+    expect(parseDateOnly("soon")).toBeUndefined();
+  });
+});
 
 describe("formatDateOnly", () => {
   it("formats a date-only string without shifting the day", () => {

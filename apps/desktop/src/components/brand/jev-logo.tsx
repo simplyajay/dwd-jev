@@ -14,7 +14,6 @@ function Wordmark() {
   );
 }
 
-/** "jev" wordmark. Used in the expanded sidebar. */
 export function JevWordmark(props: SvgProps) {
   return (
     <svg viewBox="0 0 556 294" role="img" aria-label="JEV" {...props}>
@@ -23,7 +22,7 @@ export function JevWordmark(props: SvgProps) {
   );
 }
 
-/** The "j" alone, framed square. Used in the collapsed sidebar. */
+/** The "j" alone, framed square. */
 export function JevMark(props: SvgProps) {
   return (
     <svg viewBox="-80 2 290 290" role="img" aria-label="JEV" {...props}>
@@ -40,10 +39,7 @@ const ICON_PAPER = "#F7EEDC";
 const CALCULATOR = "#E89E1C";
 const CALCULATOR_FACE = "#FFF3DC";
 
-/**
- * Wordmark, icon and tagline for the auth brand panel. The calculator's
- * cut-out uses `--brand-panel` to blend into the panel.
- */
+/** Wordmark, icon and tagline for the auth panel; the cut-out uses `--brand-panel`. */
 export function JevLogo(props: SvgProps) {
   return (
     <svg viewBox="0 0 1046 380" role="img" aria-label="JEV" {...props}>
