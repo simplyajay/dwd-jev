@@ -1,4 +1,4 @@
-import { Link, type LinkProps, useMatchRoute } from "@tanstack/react-router";
+import { Link, useMatchRoute } from "@tanstack/react-router";
 import {
   BookOpenIcon,
   ChevronsUpDownIcon,
@@ -33,12 +33,14 @@ import {
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth, useCurrentUser } from "@/features/auth/auth-context";
+import { useRememberedJevListSearch } from "@/features/jev/jev-list-search";
 import { useSettingsDialog } from "@/features/settings/use-settings-dialog";
-import { initials, ROLE_LABELS } from "@/features/users/user-labels";
+import { initials } from "@/features/users/user-labels";
+import { cn } from "@/lib/utils";
 
 interface NavItem {
   label: string;
-  to: LinkProps["to"];
+  to: "/jevs" | "/journals" | "/trial-balance";
   icon: LucideIcon;
 }
 
@@ -48,15 +50,18 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Trial Balance", to: "/trial-balance", icon: ScaleIcon },
 ];
 
-// Palette: the active item is an amber block with dark ink.
 const ACTIVE_ITEM =
   "data-active:bg-sidebar-primary data-active:text-sidebar-primary-foreground data-active:hover:bg-sidebar-primary data-active:hover:text-sidebar-primary-foreground";
+// The current page's link is disabled but shouldn't look it, and keeps its tooltip.
+const CURRENT_ITEM =
+  "aria-disabled:pointer-events-auto aria-disabled:cursor-default aria-disabled:opacity-100";
 
-export function AppSidebar() {
+/** `canExpand` is false while the window is too narrow for the expanded sidebar. */
+export function AppSidebar({ canExpand }: { canExpand: boolean }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <SidebarBrand />
+        <SidebarBrand canExpand={canExpand} />
       </SidebarHeader>
 
       <SidebarContent>
@@ -77,23 +82,30 @@ export function AppSidebar() {
 }
 
 /** Wordmark + collapse button when expanded; the "j" mark (click to expand) when collapsed. */
-function SidebarBrand() {
+function SidebarBrand({ canExpand }: { canExpand: boolean }) {
   const { state, toggleSidebar } = useSidebar();
 
   if (state === "collapsed") {
     return (
       <Tooltip>
         <TooltipTrigger asChild>
+          {/* aria-disabled, not disabled: a disabled button gets no hover, so no tooltip. */}
           <button
             type="button"
-            onClick={toggleSidebar}
+            onClick={canExpand ? toggleSidebar : undefined}
             aria-label="Expand sidebar"
-            className="flex size-8 items-center justify-center rounded-md text-sidebar-accent-foreground outline-none ring-sidebar-ring hover:bg-sidebar-accent focus-visible:ring-2"
+            aria-disabled={!canExpand || undefined}
+            className={cn(
+              "flex size-8 items-center justify-center rounded-md text-sidebar-accent-foreground outline-none ring-sidebar-ring focus-visible:ring-2",
+              canExpand ? "hover:bg-sidebar-accent" : "cursor-default",
+            )}
           >
             <JevMark className="size-7" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right">Expand sidebar (Ctrl+B)</TooltipContent>
+        <TooltipContent side="right">
+          {canExpand ? "Expand sidebar (Ctrl+B)" : "Widen the window to expand the sidebar"}
+        </TooltipContent>
       </Tooltip>
     );
   }
@@ -120,6 +132,7 @@ function SidebarBrand() {
 
 function MainNav() {
   const matchRoute = useMatchRoute();
+  const jevListSearch = useRememberedJevListSearch();
 
   return (
     <SidebarMenu>
@@ -129,9 +142,14 @@ function MainNav() {
             asChild
             tooltip={label}
             isActive={!!matchRoute({ to, fuzzy: true })}
-            className={ACTIVE_ITEM}
+            className={cn(ACTIVE_ITEM, CURRENT_ITEM)}
           >
-            <Link to={to}>
+            <Link
+              to={to}
+              // From a JEV's page, return to the list as it was left.
+              search={to === "/jevs" ? jevListSearch : {}}
+              disabled={!!matchRoute({ to, includeSearch: false })}
+            >
               <Icon />
               <span>{label}</span>
             </Link>
@@ -168,7 +186,7 @@ function UserMenu() {
               <span className="truncate font-medium text-sidebar-accent-foreground">
                 {fullName}
               </span>
-              <span className="truncate text-xs">{ROLE_LABELS[user.role]}</span>
+              <span className="truncate text-xs">{user.position}</span>
             </div>
             <ChevronsUpDownIcon className="ml-auto" />
           </SidebarMenuButton>
@@ -181,9 +199,7 @@ function UserMenu() {
         >
           <DropdownMenuLabel className="font-normal">
             <div className="truncate font-medium text-foreground">{fullName}</div>
-            <div className="truncate text-muted-foreground text-xs">
-              @{user.username} · {user.position}
-            </div>
+            <div className="truncate text-muted-foreground text-xs">@{user.username}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={() => openSettings()}>
