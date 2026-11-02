@@ -56,7 +56,14 @@ export function SettingsDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && leave(close)}>
-      <DialogContent className="h-[80svh] w-[80vw] gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent
+        className="h-[80svh] w-[80vw] gap-0 overflow-hidden p-0 sm:max-w-none"
+        // Focus the dialog, not the first tab, which would show a ring after typing (e.g. login).
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          (event.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
         <Tabs.Root
           orientation="vertical"
           value={currentTab.id}

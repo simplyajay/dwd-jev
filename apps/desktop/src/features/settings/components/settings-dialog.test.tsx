@@ -29,6 +29,14 @@ vi.mock("@/features/chart-of-accounts/components/chart-of-accounts-settings", ()
 }));
 vi.mock("@/features/theme/components/theme-settings", () => ({ ThemeSettings: () => null }));
 
+describe("SettingsDialog focus", () => {
+  it("focuses the dialog itself on open, not the first tab", () => {
+    render(<SettingsDialog />);
+
+    expect(screen.getByRole("dialog")).toHaveFocus();
+  });
+});
+
 describe("SettingsDialog unsaved changes", () => {
   it("switches tabs straight away when nothing is unsaved", async () => {
     const user = userEvent.setup();

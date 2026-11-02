@@ -16,7 +16,7 @@ export const SettingsTabIdSchema = z.enum([
 ]);
 export type SettingsTabId = z.infer<typeof SettingsTabIdSchema>;
 
-export const DEFAULT_SETTINGS_TAB: SettingsTabId = "general";
+export const DEFAULT_SETTINGS_TAB: SettingsTabId = "account";
 
 interface SettingsTab {
   id: SettingsTabId;
