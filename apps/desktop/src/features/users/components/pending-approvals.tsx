@@ -1,6 +1,7 @@
 import type { UserSummary } from "@dwd-jev/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -9,7 +10,6 @@ import {
 } from "@/features/settings/components/settings-section";
 import { api } from "@/lib/api";
 import { userQueries } from "../api/user-queries";
-import { PasswordConfirmDialog } from "./password-confirm-dialog";
 
 type Decision = "approve" | "reject";
 

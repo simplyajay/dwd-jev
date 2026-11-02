@@ -7,6 +7,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
+import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +21,6 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/dates";
 import { userQueries } from "../api/user-queries";
 import { displayName, initials, ROLE_LABELS } from "../user-labels";
-import { PasswordConfirmDialog } from "./password-confirm-dialog";
 import { StatusBadge } from "./status-badge";
 
 /** A member's details, shown in place of the lists. */
