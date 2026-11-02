@@ -1,8 +1,9 @@
 import type {
   ConfirmPasswordInput,
+  CreateJevInputSchema,
   CreateUserInput,
+  Jev,
   JevByMonthInput,
-  JevListItem,
   LoginInput,
   PaginatedResult,
   SafeUserType,
@@ -15,10 +16,15 @@ import type {
   UserSummary,
 } from "@dwd-jev/shared";
 import type { z } from "zod";
-import type { AuthSessionSchema } from "./schemas";
+import type { AuthSessionSchema, JevListRowSchema } from "./schemas";
+
+export type JevListRow = z.output<typeof JevListRowSchema>;
 
 /** What login and refresh return. */
 export type AuthSession = z.output<typeof AuthSessionSchema>;
+
+/** The create body as sent: dates as "YYYY-MM-DD" strings and amounts in pesos. */
+export type CreateJevBody = z.input<typeof CreateJevInputSchema>;
 
 /** Everything the UI needs from the backend. Screens depend only on this. */
 export interface Api {
@@ -48,6 +54,12 @@ export interface Api {
     updateAccount(input: UpdateAccountInput): Promise<UpdateAccountResult>;
   };
   jevs: {
-    listByMonth(input: JevByMonthInput): Promise<PaginatedResult<JevListItem>>;
+    /** `month: 0` lists the whole year. */
+    listByMonth(input: JevByMonthInput): Promise<PaginatedResult<JevListRow>>;
+    /** Amounts are in cents. */
+    get(id: string): Promise<Jev>;
+    /** 409 with field "jevNumber" when the number is taken. */
+    create(input: CreateJevBody): Promise<Jev>;
+    delete(id: string, input: ConfirmPasswordInput): Promise<void>;
   };
 }
