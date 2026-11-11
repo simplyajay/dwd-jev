@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  ConfirmPasswordInputSchema,
   CreateJevInputSchema,
   JevByDateRangeInputSchema,
   JevByMonthInputSchema,
@@ -13,7 +14,16 @@ import {
   updateJev,
 } from "../controllers/jevController.js";
 import { authenticate } from "../middleware/authenticate.js";
+import { rateLimit } from "../middleware/rateLimit.js";
 import { IdParamSchema, validateBody, validateParams } from "../middleware/validate.js";
+
+// Per user, since delete takes a password.
+const jevDeleteRateLimit = rateLimit({
+  windowSeconds: 60,
+  max: 10,
+  keyPrefix: "jev-delete",
+  keyBy: (req) => req.user?.sub,
+});
 
 export const jevRouter = Router();
 
@@ -34,4 +44,10 @@ jevRouter.put(
   validateBody(CreateJevInputSchema),
   updateJev,
 );
-jevRouter.delete("/:id", validateParams(IdParamSchema), deleteJev);
+jevRouter.delete(
+  "/:id",
+  jevDeleteRateLimit,
+  validateParams(IdParamSchema),
+  validateBody(ConfirmPasswordInputSchema),
+  deleteJev,
+);

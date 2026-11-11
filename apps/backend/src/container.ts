@@ -24,4 +24,4 @@ export const authService = new AuthService(
   refreshTokenService,
   userRepository,
 );
-export const jevService = new JevService(jevRepository);
+export const jevService = new JevService(jevRepository, userService);

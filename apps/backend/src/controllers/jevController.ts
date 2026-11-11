@@ -1,5 +1,6 @@
 import type { Request } from "express";
 import type {
+  ConfirmPasswordInput,
   CreateJevInput,
   JevByDateRangeInput,
   JevByMonthInput,
@@ -26,10 +27,12 @@ export const updateJev = asyncHandler<Request<{ id: string }, any, CreateJevInpu
   },
 );
 
-export const deleteJev = asyncHandler<Request<{ id: string }>>(async (req, res) => {
-  await jevService.deleteJev(req.params.id, req.user!.sub);
-  res.success(null, 200);
-});
+export const deleteJev = asyncHandler<Request<{ id: string }, any, ConfirmPasswordInput>>(
+  async (req, res) => {
+    await jevService.deleteJev(req.params.id, req.user!.sub, req.body.password);
+    res.success(null, 200);
+  },
+);
 
 export const getJevsByMonth = asyncHandler<Request<any, any, JevByMonthInput>>(
   async (req, res) => {

@@ -303,21 +303,22 @@ export class UserService {
     });
   }
 
-  // Re-reads the admin from the DB. A wrong password is 403, not 401, so the
+  // Re-reads the user from the DB. A wrong password is 403, not 401, so the
   // client doesn't treat it as an expired token.
-  private async confirmAdminPassword(
-    adminId: string,
-    password: string,
-  ): Promise<UserRow> {
-    const admin = await this.userRepository.findWithPasswordById(adminId);
-    if (!admin || admin.status !== "active" || admin.role !== "administrator") {
+  async confirmPassword(userId: string, password: string, role?: Role): Promise<UserRow> {
+    const user = await this.userRepository.findWithPasswordById(userId);
+    if (!user || user.status !== "active" || (role && user.role !== role)) {
       throw new ForbiddenError("You do not have permission to perform this action.");
     }
 
-    const isPasswordValid = await comparePassword(password, admin.password);
+    const isPasswordValid = await comparePassword(password, user.password);
     if (!isPasswordValid) throw new ForbiddenError("Incorrect password.", "password");
 
-    return admin;
+    return user;
+  }
+
+  private confirmAdminPassword(adminId: string, password: string): Promise<UserRow> {
+    return this.confirmPassword(adminId, password, "administrator");
   }
 
   // Credentials only; AuthService issues tokens.

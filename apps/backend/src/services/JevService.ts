@@ -8,6 +8,7 @@ import type {
   JevWithRelations,
   Pagination,
 } from "../repositories/JevRepository.js";
+import type { UserService } from "./UserService.js";
 import { toDateOnly, toDateOnlyOrNull } from "../utils/dateOnly.js";
 
 const formatJev = (jev: JevWithRelations): Jev => ({
@@ -64,7 +65,10 @@ const civilDateRange = (startDate: string, endDate: string): DateRange => ({
 });
 
 export class JevService {
-  constructor(private readonly jevRepository: IJevRepository) {}
+  constructor(
+    private readonly jevRepository: IJevRepository,
+    private readonly userService: UserService,
+  ) {}
 
   async createJev(input: CreateJevInput, createdBy: string): Promise<Jev> {
     const jev = await this.jevRepository.create(input, createdBy);
@@ -90,8 +94,11 @@ export class JevService {
     });
   }
 
-  deleteJev(id: string, deletedBy: string): Promise<void> {
-    return inTransaction(async (tx) => {
+  // Checks the password before taking the lock, so bcrypt doesn't hold it.
+  async deleteJev(id: string, deletedBy: string, password: string): Promise<void> {
+    await this.userService.confirmPassword(deletedBy, password);
+
+    await inTransaction(async (tx) => {
       if (!(await this.jevRepository.lockActive(id, tx))) {
         throw new NotFoundError("JEV not found.");
       }
