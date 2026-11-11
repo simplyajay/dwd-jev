@@ -24,6 +24,7 @@ export interface JevListItemRow {
   jevNumber: string;
   journalType: JournalType;
   jevDate: Date;
+  description: string;
 }
 
 export interface DateRange {
@@ -176,7 +177,13 @@ export class PrismaJevRepository implements IJevRepository {
     const [items, total] = await Promise.all([
       prisma.jev.findMany({
         where,
-        select: { id: true, jevNumber: true, journalType: true, jevDate: true },
+        select: {
+          id: true,
+          jevNumber: true,
+          journalType: true,
+          jevDate: true,
+          description: true,
+        },
         orderBy: { jevDate: "desc" },
         skip: (pagination.page - 1) * pagination.pageSize,
         take: pagination.pageSize,

@@ -61,6 +61,7 @@ export const JevListItemSchema = z.object({
   jevNumber: z.string(),
   journalType: JournalTypeSchema,
   jevDate: z.iso.date(),
+  description: z.string(),
 });
 export type JevListItem = z.infer<typeof JevListItemSchema>;
 
