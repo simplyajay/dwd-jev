@@ -1,5 +1,6 @@
 import type { CreateJevInput, Jev, JevListItem, PaginatedResult } from "@dwd-jev/shared";
 import { NotFoundError } from "../errors/AppError.js";
+import { inTransaction } from "../lib/transaction.js";
 import type {
   DateRange,
   IJevRepository,
@@ -78,19 +79,24 @@ export class JevService {
     return formatJev(jev);
   }
 
-  async updateJev(id: string, input: CreateJevInput, updatedBy: string): Promise<Jev> {
-    const jev = await this.jevRepository.update(id, input, updatedBy);
-    if (!jev) {
-      throw new NotFoundError("JEV not found.");
-    }
-    return formatJev(jev);
+  // The row lock serializes concurrent updates and deletes of the same JEV.
+  updateJev(id: string, input: CreateJevInput, updatedBy: string): Promise<Jev> {
+    return inTransaction(async (tx) => {
+      if (!(await this.jevRepository.lockActive(id, tx))) {
+        throw new NotFoundError("JEV not found.");
+      }
+      const jev = await this.jevRepository.update(id, input, updatedBy, tx);
+      return formatJev(jev);
+    });
   }
 
-  async deleteJev(id: string, deletedBy: string): Promise<void> {
-    const jev = await this.jevRepository.softDelete(id, deletedBy);
-    if (!jev) {
-      throw new NotFoundError("JEV not found.");
-    }
+  deleteJev(id: string, deletedBy: string): Promise<void> {
+    return inTransaction(async (tx) => {
+      if (!(await this.jevRepository.lockActive(id, tx))) {
+        throw new NotFoundError("JEV not found.");
+      }
+      await this.jevRepository.softDelete(id, deletedBy, tx);
+    });
   }
 
   async getJevsByMonth(

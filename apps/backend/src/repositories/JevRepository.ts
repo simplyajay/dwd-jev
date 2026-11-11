@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { DOCUMENT_CODE_LABELS } from "@dwd-jev/shared";
 import { prisma } from "../lib/prisma.js";
+import type { Tx } from "../lib/transaction.js";
 import { toJsonSafe } from "../utils/jsonSafe.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import type { CreateJevInput, JournalType } from "@dwd-jev/shared";
@@ -115,12 +116,16 @@ export interface IJevRepository {
     pagination: Pagination,
     searchKeyword?: string,
   ): Promise<{ items: JevListItemRow[]; total: number }>;
+  // Locks the active row until tx ends; false if missing or deleted.
+  lockActive(id: string, tx: Tx): Promise<boolean>;
+  // update and softDelete expect the caller to hold lockActive's lock.
   update(
     id: string,
     data: CreateJevInput,
     updatedBy: string,
-  ): Promise<JevWithRelations | null>;
-  softDelete(id: string, deletedBy: string): Promise<JevWithRelations | null>;
+    tx: Tx,
+  ): Promise<JevWithRelations>;
+  softDelete(id: string, deletedBy: string, tx: Tx): Promise<JevWithRelations>;
 }
 
 export class PrismaJevRepository implements IJevRepository {
@@ -182,57 +187,61 @@ export class PrismaJevRepository implements IJevRepository {
     return { items, total };
   }
 
+  async lockActive(id: string, tx: Tx): Promise<boolean> {
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM journal_entry_voucher
+      WHERE id = ${id}::uuid AND deleted_at IS NULL
+      FOR UPDATE
+    `;
+    return rows.length > 0;
+  }
+
   update(
     id: string,
     data: CreateJevInput,
     updatedBy: string,
-  ): Promise<JevWithRelations | null> {
-    return withUniqueConflict(JEV_UNIQUE_FIELDS, () =>
-      prisma.$transaction(async (tx) => {
-        const before = await tx.jev.findFirst({
-          where: { id, deletedAt: null },
-          include: JEV_FULL_INCLUDE,
-        });
-        if (!before) return null;
+    tx: Tx,
+  ): Promise<JevWithRelations> {
+    return withUniqueConflict(JEV_UNIQUE_FIELDS, async () => {
+      const before = await tx.jev.findUniqueOrThrow({
+        where: { id },
+        include: JEV_FULL_INCLUDE,
+      });
 
-        // Cascades to externalDocumentEntries via the FK's onDelete: Cascade.
-        await tx.accountingEntry.deleteMany({ where: { jevId: id } });
-        await tx.supportingDocumentEntry.deleteMany({ where: { jevId: id } });
+      // Cascades to externalDocumentEntries via the FK's onDelete: Cascade.
+      await tx.accountingEntry.deleteMany({ where: { jevId: id } });
+      await tx.supportingDocumentEntry.deleteMany({ where: { jevId: id } });
 
-        const after = await tx.jev.update({
-          where: { id },
-          data: {
-            ...buildJevScalarData(data),
-            lastUpdatedBy: updatedBy,
-            accountingEntries: {
-              create: buildAccountingEntriesCreate(data.accountingEntries),
-            },
-            supportingDocumentEntries: {
-              create: buildSupportingDocumentsCreate(data.supportingDocuments),
-            },
+      const after = await tx.jev.update({
+        where: { id },
+        data: {
+          ...buildJevScalarData(data),
+          lastUpdatedBy: updatedBy,
+          accountingEntries: {
+            create: buildAccountingEntriesCreate(data.accountingEntries),
           },
-          include: JEV_FULL_INCLUDE,
-        });
-
-        await tx.jevRevision.create({
-          data: {
-            jevId: id,
-            beforeData: toJsonSafe(before) as Prisma.InputJsonValue,
-            afterData: toJsonSafe(after) as Prisma.InputJsonValue,
-            updatedBy,
+          supportingDocumentEntries: {
+            create: buildSupportingDocumentsCreate(data.supportingDocuments),
           },
-        });
+        },
+        include: JEV_FULL_INCLUDE,
+      });
 
-        return after;
-      }),
-    );
+      await tx.jevRevision.create({
+        data: {
+          jevId: id,
+          beforeData: toJsonSafe(before) as Prisma.InputJsonValue,
+          afterData: toJsonSafe(after) as Prisma.InputJsonValue,
+          updatedBy,
+        },
+      });
+
+      return after;
+    });
   }
 
-  async softDelete(id: string, deletedBy: string): Promise<JevWithRelations | null> {
-    const existing = await prisma.jev.findFirst({ where: { id, deletedAt: null } });
-    if (!existing) return null;
-
-    return prisma.jev.update({
+  softDelete(id: string, deletedBy: string, tx: Tx): Promise<JevWithRelations> {
+    return tx.jev.update({
       where: { id },
       data: { deletedAt: new Date(), deletedBy },
       include: JEV_FULL_INCLUDE,
