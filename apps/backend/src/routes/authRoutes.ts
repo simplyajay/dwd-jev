@@ -8,6 +8,7 @@ export const authRouter = Router();
 
 const loginRateLimit = rateLimit({ windowSeconds: 60, max: 5, keyPrefix: "login" });
 const refreshRateLimit = rateLimit({ windowSeconds: 60, max: 10, keyPrefix: "refresh" });
+const logoutRateLimit = rateLimit({ windowSeconds: 60, max: 10, keyPrefix: "logout" });
 
 authRouter.post("/login", loginRateLimit, validateBody(LoginInputSchema), login);
 authRouter.post(
@@ -16,4 +17,9 @@ authRouter.post(
   validateBody(RefreshTokenInputSchema),
   refresh,
 );
-authRouter.post("/logout", validateBody(RefreshTokenInputSchema), logout);
+authRouter.post(
+  "/logout",
+  logoutRateLimit,
+  validateBody(RefreshTokenInputSchema),
+  logout,
+);
