@@ -16,14 +16,18 @@ export const rateLimit = ({
   keyPrefix,
   keyBy = (req) => req.ip,
 }: RateLimitOptions): RequestHandler => {
-  return async (req, _res, next) => {
+  return async (req, res, next) => {
     const key = `${keyPrefix}:${keyBy(req) ?? "unknown"}`;
 
     try {
-      const count = await rateLimitRepository.hit(key, windowSeconds);
+      const { count, retryAfterSeconds } = await rateLimitRepository.hit(
+        key,
+        windowSeconds,
+      );
 
       if (count > max) {
-        next(new TooManyRequestsError());
+        res.set("Retry-After", String(retryAfterSeconds));
+        next(new TooManyRequestsError(retryAfterSeconds));
         return;
       }
     } catch (err) {

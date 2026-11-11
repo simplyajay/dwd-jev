@@ -1,14 +1,19 @@
 import { prisma } from "../lib/prisma.js";
 
+export interface RateLimitHit {
+  count: number;
+  retryAfterSeconds: number;
+}
+
 export interface IRateLimitRepository {
-  hit(key: string, windowSeconds: number): Promise<number>;
+  hit(key: string, windowSeconds: number): Promise<RateLimitHit>;
   deleteExpired(): Promise<number>;
 }
 
 export class PrismaRateLimitRepository implements IRateLimitRepository {
   // Atomic: starts a new window if the current one has expired, else increments.
-  async hit(key: string, windowSeconds: number): Promise<number> {
-    const [{ count }] = await prisma.$queryRaw<[{ count: number }]>`
+  async hit(key: string, windowSeconds: number): Promise<RateLimitHit> {
+    const [hit] = await prisma.$queryRaw<[RateLimitHit]>`
       INSERT INTO rate_limits (key, count, expires_at)
       VALUES (${key}, 1, now() + ${windowSeconds} * interval '1 second')
       ON CONFLICT (key) DO UPDATE SET
@@ -16,9 +21,10 @@ export class PrismaRateLimitRepository implements IRateLimitRepository {
           THEN 1 ELSE rate_limits.count + 1 END,
         expires_at = CASE WHEN rate_limits.expires_at <= now()
           THEN EXCLUDED.expires_at ELSE rate_limits.expires_at END
-      RETURNING count
+      RETURNING count,
+        ceil(extract(epoch FROM expires_at - now()))::int AS "retryAfterSeconds"
     `;
-    return count;
+    return hit;
   }
 
   async deleteExpired(): Promise<number> {
