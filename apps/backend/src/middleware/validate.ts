@@ -7,7 +7,8 @@ export const IdParamSchema = z.object({ id: z.uuid("Invalid id.") });
 export const validateBody =
   (schema: ZodType): RequestHandler =>
   (req, _res, next) => {
-    const result = schema.safeParse(req.body);
+    // No body leaves req.body undefined; parse {} so the field messages apply.
+    const result = schema.safeParse(req.body ?? {});
     if (!result.success) {
       next(
         new ValidationError(result.error.issues.map((issue) => issue.message).join(", ")),
