@@ -1,5 +1,6 @@
 import { PrismaUserRepository } from "./repositories/UserRepository.js";
 import { PrismaJevRepository } from "./repositories/JevRepository.js";
+import { PrismaJevRevisionRepository } from "./repositories/JevRevisionRepository.js";
 import { PrismaAuditLogRepository } from "./repositories/AuditLogRepository.js";
 import { PrismaRefreshTokenRepository } from "./repositories/RefreshTokenRepository.js";
 import { PrismaRateLimitRepository } from "./repositories/RateLimitRepository.js";
@@ -10,6 +11,7 @@ import { JevService } from "./services/JevService.js";
 
 export const userRepository = new PrismaUserRepository();
 const jevRepository = new PrismaJevRepository();
+const jevRevisionRepository = new PrismaJevRevisionRepository();
 export const auditLogRepository = new PrismaAuditLogRepository();
 const refreshTokenRepository = new PrismaRefreshTokenRepository();
 export const rateLimitRepository = new PrismaRateLimitRepository();
@@ -24,4 +26,8 @@ export const authService = new AuthService(
   refreshTokenService,
   userRepository,
 );
-export const jevService = new JevService(jevRepository, userService);
+export const jevService = new JevService(
+  jevRepository,
+  jevRevisionRepository,
+  userService,
+);

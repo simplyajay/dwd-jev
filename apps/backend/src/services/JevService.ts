@@ -14,6 +14,7 @@ import type {
   JevWithRelations,
   Pagination,
 } from "../repositories/JevRepository.js";
+import type { IJevRevisionRepository } from "../repositories/JevRevisionRepository.js";
 import type { UserService } from "./UserService.js";
 import { toDateOnly, toDateOnlyOrNull } from "../utils/dateOnly.js";
 import { toUserRef } from "../utils/userRef.js";
@@ -85,6 +86,7 @@ const civilDateRange = (startDate: string, endDate: string): DateRange => ({
 export class JevService {
   constructor(
     private readonly jevRepository: IJevRepository,
+    private readonly jevRevisionRepository: IJevRevisionRepository,
     private readonly userService: UserService,
   ) {}
 
@@ -104,11 +106,16 @@ export class JevService {
   // The row lock serializes concurrent updates and deletes of the same JEV.
   updateJev(id: string, input: CreateJevInput, updatedBy: string): Promise<Jev> {
     return inTransaction(async (tx) => {
-      if (!(await this.jevRepository.lockActive(id, tx))) {
-        throw new NotFoundError("JEV not found.");
-      }
-      const jev = await this.jevRepository.update(id, input, updatedBy, tx);
-      return formatJev(jev);
+      const locked = await this.jevRepository.lockActive(id, tx);
+      const before = locked ? await this.jevRepository.findById(id, tx) : null;
+      if (!before) throw new NotFoundError("JEV not found.");
+
+      const after = formatJev(await this.jevRepository.update(id, input, updatedBy, tx));
+      await this.jevRevisionRepository.create(
+        { jevId: id, beforeData: formatJev(before), afterData: after, updatedBy },
+        tx,
+      );
+      return after;
     });
   }
 

@@ -1,8 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { DOCUMENT_CODE_LABELS } from "@dwd-jev/shared";
 import { prisma } from "../lib/prisma.js";
-import type { Tx } from "../lib/transaction.js";
-import { toJsonSafe } from "../utils/jsonSafe.js";
+import type { DbClient, Tx } from "../lib/transaction.js";
 import { USER_REF_SELECT } from "../utils/userRef.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import type { CreateJevInput, JournalType } from "@dwd-jev/shared";
@@ -116,7 +115,7 @@ const buildJevScalarData = (data: CreateJevInput) => ({
 
 export interface IJevRepository {
   create(data: CreateJevInput, createdBy: string): Promise<JevWithRelations>;
-  findById(id: string): Promise<JevWithRelations | null>;
+  findById(id: string, client?: DbClient): Promise<JevWithRelations | null>;
   findMany(
     range: DateRange,
     pagination: Pagination,
@@ -154,8 +153,8 @@ export class PrismaJevRepository implements IJevRepository {
     );
   }
 
-  findById(id: string): Promise<JevWithRelations | null> {
-    return prisma.jev.findFirst({
+  findById(id: string, client: DbClient = prisma): Promise<JevWithRelations | null> {
+    return client.jev.findFirst({
       where: { id, deletedAt: null },
       include: JEV_FULL_INCLUDE,
     });
@@ -215,16 +214,11 @@ export class PrismaJevRepository implements IJevRepository {
     tx: Tx,
   ): Promise<JevWithRelations> {
     return withUniqueConflict(JEV_UNIQUE_FIELDS, async () => {
-      const before = await tx.jev.findUniqueOrThrow({
-        where: { id },
-        include: JEV_FULL_INCLUDE,
-      });
-
       // Cascades to externalDocumentEntries via the FK's onDelete: Cascade.
       await tx.accountingEntry.deleteMany({ where: { jevId: id } });
       await tx.supportingDocumentEntry.deleteMany({ where: { jevId: id } });
 
-      const after = await tx.jev.update({
+      return tx.jev.update({
         where: { id },
         data: {
           ...buildJevScalarData(data),
@@ -238,17 +232,6 @@ export class PrismaJevRepository implements IJevRepository {
         },
         include: JEV_FULL_INCLUDE,
       });
-
-      await tx.jevRevision.create({
-        data: {
-          jevId: id,
-          beforeData: toJsonSafe(before) as Prisma.InputJsonValue,
-          afterData: toJsonSafe(after) as Prisma.InputJsonValue,
-          updatedBy,
-        },
-      });
-
-      return after;
     });
   }
 
