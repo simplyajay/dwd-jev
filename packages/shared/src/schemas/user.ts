@@ -106,6 +106,9 @@ export const UserRefSchema = z.object({
 });
 export type UserRef = z.infer<typeof UserRefSchema>;
 
+export const UserRefWithPositionSchema = UserRefSchema.extend({ position: z.string() });
+export type UserRefWithPosition = z.infer<typeof UserRefWithPositionSchema>;
+
 export const UserDetailSchema = SafeUserSchema.extend({
   approvedBy: UserRefSchema.nullable(),
 });

@@ -9,7 +9,7 @@ import {
   CreateSupportingDocumentEntryInputSchema,
   SupportingDocumentEntrySchema,
 } from "./supportingDocumentEntry.js";
-import { UserRefSchema } from "./user.js";
+import { UserRefWithPositionSchema } from "./user.js";
 
 const PaginationInputSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -33,7 +33,7 @@ export type JevByMonthInput = z.infer<typeof JevByMonthInputSchema>;
 
 export type JevByDateRangeInput = z.infer<typeof JevByDateRangeInputSchema>;
 
-export const JevUserRefSchema = UserRefSchema.extend({ position: z.string() });
+export const JevUserRefSchema = UserRefWithPositionSchema;
 export type JevUserRef = z.infer<typeof JevUserRefSchema>;
 
 export const JevSchema = z.object({

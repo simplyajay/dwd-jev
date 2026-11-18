@@ -85,6 +85,7 @@ model User {
   lastUpdatedJevs Jev[]         @relation("JevLastUpdatedBy")
   deletedJevs     Jev[]         @relation("JevDeletedBy")
   jevRevisions    JevRevision[] @relation("JevRevisionUpdatedBy")
+  auditLogs       AuditLog[]    @relation("AuditLogActor")
   refreshToken    RefreshToken?
 
   @@map("users")
@@ -157,7 +158,7 @@ model JevRevision {
   beforeData Json     @map("before_data")
   afterData  Json     @map("after_data")
   updatedBy  String   @map("updated_by") @db.Uuid
-  updatedAt  DateTime @default(now()) @map("updated_at")
+  updatedAt  DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at")
 
   jev           Jev  @relation(fields: [jevId], references: [id], onDelete: Cascade)
   updatedByUser User @relation("JevRevisionUpdatedBy", fields: [updatedBy], references: [id])
@@ -207,7 +208,7 @@ model ExternalDocumentEntry {
   @@map("external_document_entries")
 }
 
-// No relations. documentType is a String so new types need no enum migration.
+// documentType is a String so new types need no enum migration.
 // documentId has no FK: the document's id for create/delete, its revision's
 // id for update.
 model AuditLog {
@@ -216,8 +217,16 @@ model AuditLog {
   documentId   String      @map("document_id") @db.Uuid
   action       AuditAction
   description  String
-  createdAt    DateTime    @default(now()) @map("created_at")
+  actorId      String      @map("actor_id") @db.Uuid
+  // clock_timestamp(), not now(): now() is the transaction's start, which
+  // misorders rows written after waiting on a lock.
+  createdAt    DateTime    @default(dbgenerated("clock_timestamp()")) @map("created_at")
 
+  actor User @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt, id])
+  @@index([actorId, createdAt, id])
+  @@index([action, createdAt, id])
   @@map("audit_logs")
 }
 

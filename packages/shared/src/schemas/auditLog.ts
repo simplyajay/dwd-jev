@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { AuditActionSchema, DocumentTypeSchema } from "../enums.js";
+import { UserRefWithPositionSchema } from "./user.js";
 
 export const AuditLogSchema = z.object({
   id: z.uuid(),
@@ -7,6 +8,7 @@ export const AuditLogSchema = z.object({
   documentId: z.uuid(),
   action: AuditActionSchema,
   description: z.string(),
+  actor: UserRefWithPositionSchema,
   createdAt: z.coerce.date(),
 });
 export type AuditLog = z.infer<typeof AuditLogSchema>;
