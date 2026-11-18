@@ -114,7 +114,7 @@ const buildJevScalarData = (data: CreateJevInput) => ({
 });
 
 export interface IJevRepository {
-  create(data: CreateJevInput, createdBy: string): Promise<JevWithRelations>;
+  create(data: CreateJevInput, createdBy: string, tx: Tx): Promise<JevWithRelations>;
   findById(id: string, client?: DbClient): Promise<JevWithRelations | null>;
   findMany(
     range: DateRange,
@@ -134,9 +134,9 @@ export interface IJevRepository {
 }
 
 export class PrismaJevRepository implements IJevRepository {
-  create(data: CreateJevInput, createdBy: string): Promise<JevWithRelations> {
+  create(data: CreateJevInput, createdBy: string, tx: Tx): Promise<JevWithRelations> {
     return withUniqueConflict(JEV_UNIQUE_FIELDS, () =>
-      prisma.jev.create({
+      tx.jev.create({
         data: {
           ...buildJevScalarData(data),
           createdBy,

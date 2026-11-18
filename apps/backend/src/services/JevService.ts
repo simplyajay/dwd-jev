@@ -1,4 +1,5 @@
 import type {
+  AuditAction,
   CreateJevInput,
   Jev,
   JevListItem,
@@ -6,7 +7,8 @@ import type {
   PaginatedResult,
 } from "@dwd-jev/shared";
 import { NotFoundError } from "../errors/AppError.js";
-import { inTransaction } from "../lib/transaction.js";
+import { inTransaction, type Tx } from "../lib/transaction.js";
+import type { IAuditLogRepository } from "../repositories/AuditLogRepository.js";
 import type {
   DateRange,
   IJevRepository,
@@ -87,12 +89,29 @@ export class JevService {
   constructor(
     private readonly jevRepository: IJevRepository,
     private readonly jevRevisionRepository: IJevRevisionRepository,
+    private readonly auditLogRepository: IAuditLogRepository,
     private readonly userService: UserService,
   ) {}
 
-  async createJev(input: CreateJevInput, createdBy: string): Promise<Jev> {
-    const jev = await this.jevRepository.create(input, createdBy);
-    return formatJev(jev);
+  private logJev(
+    action: AuditAction,
+    documentId: string,
+    description: string,
+    actorId: string,
+    tx: Tx,
+  ): Promise<void> {
+    return this.auditLogRepository.create(
+      { documentType: "jev", documentId, action, description, actorId },
+      tx,
+    );
+  }
+
+  createJev(input: CreateJevInput, createdBy: string): Promise<Jev> {
+    return inTransaction(async (tx) => {
+      const jev = formatJev(await this.jevRepository.create(input, createdBy, tx));
+      await this.logJev("create", jev.id, `Created JEV ${jev.jevNumber}`, createdBy, tx);
+      return jev;
+    });
   }
 
   async getJevById(id: string): Promise<Jev> {
@@ -111,10 +130,15 @@ export class JevService {
       if (!before) throw new NotFoundError("JEV not found.");
 
       const after = formatJev(await this.jevRepository.update(id, input, updatedBy, tx));
-      await this.jevRevisionRepository.create(
+      const revision = await this.jevRevisionRepository.create(
         { jevId: id, beforeData: formatJev(before), afterData: after, updatedBy },
         tx,
       );
+      const description =
+        before.jevNumber === after.jevNumber
+          ? `Updated JEV ${after.jevNumber}`
+          : `Updated JEV ${after.jevNumber} (was ${before.jevNumber})`;
+      await this.logJev("update", revision.id, description, updatedBy, tx);
       return after;
     });
   }
@@ -127,7 +151,8 @@ export class JevService {
       if (!(await this.jevRepository.lockActive(id, tx))) {
         throw new NotFoundError("JEV not found.");
       }
-      await this.jevRepository.softDelete(id, deletedBy, tx);
+      const jev = await this.jevRepository.softDelete(id, deletedBy, tx);
+      await this.logJev("delete", id, `Deleted JEV ${jev.jevNumber}`, deletedBy, tx);
     });
   }
 

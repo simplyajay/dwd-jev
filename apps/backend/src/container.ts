@@ -12,7 +12,7 @@ import { JevService } from "./services/JevService.js";
 export const userRepository = new PrismaUserRepository();
 const jevRepository = new PrismaJevRepository();
 const jevRevisionRepository = new PrismaJevRevisionRepository();
-export const auditLogRepository = new PrismaAuditLogRepository();
+const auditLogRepository = new PrismaAuditLogRepository();
 const refreshTokenRepository = new PrismaRefreshTokenRepository();
 export const rateLimitRepository = new PrismaRateLimitRepository();
 
@@ -29,5 +29,6 @@ export const authService = new AuthService(
 export const jevService = new JevService(
   jevRepository,
   jevRevisionRepository,
+  auditLogRepository,
   userService,
 );
