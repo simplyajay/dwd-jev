@@ -5,6 +5,7 @@ import {
   withUniqueConflict,
   type UniqueFieldMap,
 } from "../utils/prismaErrors.js";
+import { USER_REF_SELECT } from "../utils/userRef.js";
 import type { CreateUserInput, SafeUserType, UserType } from "@dwd-jev/shared";
 
 // Backstop for the race the UserService pre-check can't close (see createUser).
@@ -14,15 +15,7 @@ const USER_UNIQUE_FIELDS: UniqueFieldMap = {
 };
 
 const APPROVER_INCLUDE = {
-  approvedByUser: {
-    select: {
-      id: true,
-      firstName: true,
-      middleName: true,
-      lastName: true,
-      isSystemAccount: true,
-    },
-  },
+  approvedByUser: { select: USER_REF_SELECT },
 } as const;
 
 const AUTH_STATE_SELECT = {

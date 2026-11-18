@@ -3,10 +3,15 @@ import { DOCUMENT_CODE_LABELS } from "@dwd-jev/shared";
 import { prisma } from "../lib/prisma.js";
 import type { Tx } from "../lib/transaction.js";
 import { toJsonSafe } from "../utils/jsonSafe.js";
+import { USER_REF_SELECT } from "../utils/userRef.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import type { CreateJevInput, JournalType } from "@dwd-jev/shared";
 
+const JEV_USER_SELECT = { ...USER_REF_SELECT, position: true } as const;
+
 const JEV_FULL_INCLUDE = {
+  createdByUser: { select: JEV_USER_SELECT },
+  lastUpdatedByUser: { select: JEV_USER_SELECT },
   accountingEntries: {
     include: { externalDocumentEntries: true },
     orderBy: { sortOrder: "asc" },

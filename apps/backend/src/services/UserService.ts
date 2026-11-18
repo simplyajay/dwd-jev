@@ -7,6 +7,7 @@ import {
 } from "../errors/AppError.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { formatFullName } from "../utils/fullName.js";
+import { toUserRef } from "../utils/userRef.js";
 import { inTransaction } from "../lib/transaction.js";
 import type {
   Role,
@@ -64,11 +65,7 @@ const toUserDetail = ({
   ...user
 }: UserDetailRow): UserDetail => ({
   ...user,
-  approvedBy: approvedByUser && {
-    id: approvedByUser.id,
-    fullName: approvedByUser.isSystemAccount ? "System" : formatFullName(approvedByUser),
-    isSystemAccount: approvedByUser.isSystemAccount,
-  },
+  approvedBy: approvedByUser && toUserRef(approvedByUser),
 });
 
 export class UserService {

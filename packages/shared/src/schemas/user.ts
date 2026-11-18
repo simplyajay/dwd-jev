@@ -98,15 +98,16 @@ export const UserSummarySchema = z.object({
 });
 export type UserSummary = z.infer<typeof UserSummarySchema>;
 
-// approvedBy.fullName is "System" for system accounts.
+// fullName is "System" for system accounts.
+export const UserRefSchema = z.object({
+  id: z.uuid(),
+  fullName: z.string(),
+  isSystemAccount: z.boolean(),
+});
+export type UserRef = z.infer<typeof UserRefSchema>;
+
 export const UserDetailSchema = SafeUserSchema.extend({
-  approvedBy: z
-    .object({
-      id: z.uuid(),
-      fullName: z.string(),
-      isSystemAccount: z.boolean(),
-    })
-    .nullable(),
+  approvedBy: UserRefSchema.nullable(),
 });
 export type UserDetail = z.infer<typeof UserDetailSchema>;
 

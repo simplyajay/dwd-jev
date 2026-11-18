@@ -1,4 +1,10 @@
-import type { CreateJevInput, Jev, JevListItem, PaginatedResult } from "@dwd-jev/shared";
+import type {
+  CreateJevInput,
+  Jev,
+  JevListItem,
+  JevUserRef,
+  PaginatedResult,
+} from "@dwd-jev/shared";
 import { NotFoundError } from "../errors/AppError.js";
 import { inTransaction } from "../lib/transaction.js";
 import type {
@@ -10,9 +16,21 @@ import type {
 } from "../repositories/JevRepository.js";
 import type { UserService } from "./UserService.js";
 import { toDateOnly, toDateOnlyOrNull } from "../utils/dateOnly.js";
+import { toUserRef } from "../utils/userRef.js";
 
-const formatJev = (jev: JevWithRelations): Jev => ({
+const toJevUserRef = (user: JevWithRelations["createdByUser"]): JevUserRef => ({
+  ...toUserRef(user),
+  position: user.position,
+});
+
+const formatJev = ({
+  createdByUser,
+  lastUpdatedByUser,
+  ...jev
+}: JevWithRelations): Jev => ({
   ...jev,
+  createdBy: toJevUserRef(createdByUser),
+  lastUpdatedBy: toJevUserRef(lastUpdatedByUser),
   jevDate: toDateOnly(jev.jevDate),
   dvDate: toDateOnlyOrNull(jev.dvDate),
   adaDate: toDateOnlyOrNull(jev.adaDate),
