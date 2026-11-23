@@ -3,6 +3,7 @@ import type {
   CreateJevInput,
   Jev,
   JevListItem,
+  JevSnapshot,
   JevUserRef,
   PaginatedResult,
 } from "@dwd-jev/shared";
@@ -43,6 +44,17 @@ const formatJev = ({
     documentDate: toDateOnly(doc.documentDate),
   })),
 });
+
+const toJevSnapshot = ({
+  id,
+  createdAt,
+  createdBy,
+  lastUpdatedAt,
+  lastUpdatedBy,
+  deletedAt,
+  deletedBy,
+  ...snapshot
+}: Jev): JevSnapshot => snapshot;
 
 const formatJevListItem = (item: JevListItemRow): JevListItem => ({
   ...item,
@@ -131,7 +143,12 @@ export class JevService {
 
       const after = formatJev(await this.jevRepository.update(id, input, updatedBy, tx));
       const revision = await this.jevRevisionRepository.create(
-        { jevId: id, beforeData: formatJev(before), afterData: after, updatedBy },
+        {
+          jevId: id,
+          beforeData: toJevSnapshot(formatJev(before)),
+          afterData: toJevSnapshot(after),
+          updatedBy,
+        },
         tx,
       );
       const description =

@@ -1,12 +1,12 @@
 import type { Prisma } from "@prisma/client";
-import type { Jev } from "@dwd-jev/shared";
+import type { JevSnapshot } from "@dwd-jev/shared";
 import type { Tx } from "../lib/transaction.js";
 import { toJsonSafe } from "../utils/jsonSafe.js";
 
 export interface CreateJevRevisionInput {
   jevId: string;
-  beforeData: Jev;
-  afterData: Jev;
+  beforeData: JevSnapshot;
+  afterData: JevSnapshot;
   updatedBy: string;
 }
 

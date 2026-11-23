@@ -1,6 +1,6 @@
 import type { AccountingEntry } from "./schemas/accountingEntry.js";
 import type { ExternalDocumentEntry } from "./schemas/externalDocumentEntry.js";
-import type { Jev } from "./schemas/jev.js";
+import type { JevSnapshot } from "./schemas/jevRevision.js";
 import type { SupportingDocumentEntry } from "./schemas/supportingDocumentEntry.js";
 
 export interface JevDiff {
@@ -9,8 +9,6 @@ export interface JevDiff {
   removed: string[]; // before-indices
 }
 
-// Excludes identity and audit fields; lastUpdatedAt/By change on every update,
-// so they would always show as changed.
 const JEV_SCALAR_FIELDS = [
   "journalType",
   "jevNumber",
@@ -23,7 +21,7 @@ const JEV_SCALAR_FIELDS = [
   "checkDate",
   "payeeName",
   "description",
-] as const satisfies readonly (keyof Jev)[];
+] as const satisfies readonly (keyof JevSnapshot)[];
 
 // Bookkeeping only, so reordering rows doesn't count as a change.
 const ACCOUNTING_ENTRY_FIELDS = [
@@ -96,7 +94,7 @@ const matchByKey = <T>(before: T[], after: T[], keyOf: (item: T) => string): Mat
   return { matched, added, removed };
 };
 
-export function diffJev(before: Jev, after: Jev): JevDiff {
+export function diffJev(before: JevSnapshot, after: JevSnapshot): JevDiff {
   const changed: string[] = [];
   const added: string[] = [];
   const removed: string[] = [];

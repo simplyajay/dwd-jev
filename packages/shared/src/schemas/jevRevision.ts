@@ -1,12 +1,24 @@
 import { z } from "zod";
 import { JevSchema, JevUserRefSchema } from "./jev.js";
 
-// beforeData and afterData are in the GET /jev/:id shape, so diffJev takes them as-is.
+// Content only; who and when come from the revision row.
+export const JevSnapshotSchema = JevSchema.omit({
+  id: true,
+  createdAt: true,
+  createdBy: true,
+  lastUpdatedAt: true,
+  lastUpdatedBy: true,
+  deletedAt: true,
+  deletedBy: true,
+});
+export type JevSnapshot = z.infer<typeof JevSnapshotSchema>;
+
+// beforeData is null on the revision written when the JEV is created.
 export const JevRevisionSchema = z.object({
   id: z.uuid(),
   jevId: z.uuid(),
-  beforeData: JevSchema,
-  afterData: JevSchema,
+  beforeData: JevSnapshotSchema.nullable(),
+  afterData: JevSnapshotSchema,
   updatedBy: JevUserRefSchema,
   updatedAt: z.coerce.date(),
 });
