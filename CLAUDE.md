@@ -28,7 +28,9 @@ changes to, or run commands against any of this.
 - Dev: Postgres runs locally via Docker Compose (`apps/backend/docker-compose.yml`).
   Start it with `docker compose up -d` from `apps/backend/` before the dev server.
   Connection settings are in `apps/backend/.env.dev`.
-- Production: cloud-hosted Postgres (Neon), configured in `apps/backend/.env.prod`.
+- The app only uses this local Postgres. Neon (`apps/backend/.env.prod`) is planned
+  for production but not in use yet: nothing needs deploying there and its contents
+  don't matter until the user says Neon is in use.
 - Prisma schema lives at `apps/backend/prisma/schema.prisma`.
 - Expired refresh tokens and rate-limit rows are swept hourly (`src/sweeps.ts`).
 - No state is held in process memory, so running more than one backend process is safe.
