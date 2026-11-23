@@ -79,7 +79,7 @@ model User {
   // Must equal the access token's ver; bumped on every auth-relevant change.
   tokenVersion    Int       @default(0) @map("token_version")
 
-  approvedByUser  User?         @relation("UserApprovedBy", fields: [approvedBy], references: [id])
+  approvedByUser  User?         @relation("UserApprovedBy", fields: [approvedBy], references: [id], onDelete: Restrict)
   approvedUsers   User[]        @relation("UserApprovedBy")
   createdJevs     Jev[]         @relation("JevCreatedBy")
   lastUpdatedJevs Jev[]         @relation("JevLastUpdatedBy")
@@ -143,7 +143,7 @@ model Jev {
 
   createdByUser     User  @relation("JevCreatedBy", fields: [createdBy], references: [id])
   lastUpdatedByUser User  @relation("JevLastUpdatedBy", fields: [lastUpdatedBy], references: [id])
-  deletedByUser     User? @relation("JevDeletedBy", fields: [deletedBy], references: [id])
+  deletedByUser     User? @relation("JevDeletedBy", fields: [deletedBy], references: [id], onDelete: Restrict)
 
   accountingEntries         AccountingEntry[]
   supportingDocumentEntries SupportingDocumentEntry[]
