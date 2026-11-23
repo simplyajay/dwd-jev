@@ -155,7 +155,8 @@ model Jev {
 model JevRevision {
   id         String   @id @default(uuid()) @db.Uuid
   jevId      String   @map("jev_id") @db.Uuid
-  beforeData Json     @map("before_data")
+  // Null on the revision written when the JEV is created.
+  beforeData Json?    @map("before_data")
   afterData  Json     @map("after_data")
   updatedBy  String   @map("updated_by") @db.Uuid
   updatedAt  DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at")
@@ -209,8 +210,8 @@ model ExternalDocumentEntry {
 }
 
 // documentType is a String so new types need no enum migration.
-// documentId has no FK: the document's id for create/delete, its revision's
-// id for update.
+// documentId has no FK: the revision's id for create/update, the document's
+// id for delete.
 model AuditLog {
   id           String      @id @default(uuid()) @db.Uuid
   documentType String      @map("document_type")

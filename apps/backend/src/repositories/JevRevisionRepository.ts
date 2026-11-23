@@ -1,11 +1,11 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import type { JevSnapshot } from "@dwd-jev/shared";
 import type { Tx } from "../lib/transaction.js";
 import { toJsonSafe } from "../utils/jsonSafe.js";
 
 export interface CreateJevRevisionInput {
   jevId: string;
-  beforeData: JevSnapshot;
+  beforeData: JevSnapshot | null;
   afterData: JevSnapshot;
   updatedBy: string;
 }
@@ -22,7 +22,11 @@ export class PrismaJevRevisionRepository implements IJevRevisionRepository {
     return tx.jevRevision.create({
       data: {
         ...data,
-        beforeData: toJsonSafe(beforeData) as Prisma.InputJsonValue,
+        // DbNull stores SQL NULL; JsonNull would store a JSON null.
+        beforeData:
+          beforeData === null
+            ? Prisma.DbNull
+            : (toJsonSafe(beforeData) as Prisma.InputJsonValue),
         afterData: toJsonSafe(afterData) as Prisma.InputJsonValue,
       },
       select: { id: true },

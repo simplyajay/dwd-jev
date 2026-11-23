@@ -121,7 +121,22 @@ export class JevService {
   createJev(input: CreateJevInput, createdBy: string): Promise<Jev> {
     return inTransaction(async (tx) => {
       const jev = formatJev(await this.jevRepository.create(input, createdBy, tx));
-      await this.logJev("create", jev.id, `Created JEV ${jev.jevNumber}`, createdBy, tx);
+      const revision = await this.jevRevisionRepository.create(
+        {
+          jevId: jev.id,
+          beforeData: null,
+          afterData: toJevSnapshot(jev),
+          updatedBy: createdBy,
+        },
+        tx,
+      );
+      await this.logJev(
+        "create",
+        revision.id,
+        `Created JEV ${jev.jevNumber}`,
+        createdBy,
+        tx,
+      );
       return jev;
     });
   }
