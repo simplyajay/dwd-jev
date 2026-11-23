@@ -3,6 +3,7 @@ import type {
   ConfirmPasswordInput,
   CreateJevInput,
   JevByDateRangeInput,
+  JevByIdQuery,
   JevByMonthInput,
 } from "@dwd-jev/shared";
 import { jevService } from "../container.js";
@@ -16,8 +17,14 @@ export const createJev = asyncHandler<Request<any, any, CreateJevInput>>(
 );
 
 export const getJevById = asyncHandler<Request<{ id: string }>>(async (req, res) => {
-  const jev = await jevService.getJevById(req.params.id);
+  const { includeDeleted } = res.locals.query as JevByIdQuery;
+  const jev = await jevService.getJevById(req.params.id, includeDeleted);
   res.success(jev, 200);
+});
+
+export const getJevRevision = asyncHandler<Request<{ id: string }>>(async (req, res) => {
+  const revision = await jevService.getJevRevision(req.params.id);
+  res.success(revision, 200);
 });
 
 export const updateJev = asyncHandler<Request<{ id: string }, any, CreateJevInput>>(

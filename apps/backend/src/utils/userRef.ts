@@ -1,4 +1,4 @@
-import type { UserRef } from "@dwd-jev/shared";
+import type { UserRef, UserRefWithPosition } from "@dwd-jev/shared";
 import { formatFullName } from "./fullName.js";
 
 export const USER_REF_SELECT = {
@@ -7,6 +7,11 @@ export const USER_REF_SELECT = {
   middleName: true,
   lastName: true,
   isSystemAccount: true,
+} as const;
+
+export const USER_REF_WITH_POSITION_SELECT = {
+  ...USER_REF_SELECT,
+  position: true,
 } as const;
 
 interface UserRefRow {
@@ -22,3 +27,7 @@ export const toUserRef = (user: UserRefRow): UserRef => ({
   fullName: user.isSystemAccount ? "System" : formatFullName(user),
   isSystemAccount: user.isSystemAccount,
 });
+
+export const toUserRefWithPosition = (
+  user: UserRefRow & { position: string },
+): UserRefWithPosition => ({ ...toUserRef(user), position: user.position });

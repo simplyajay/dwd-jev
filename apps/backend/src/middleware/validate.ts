@@ -33,3 +33,19 @@ export const validateParams =
 
     next();
   };
+
+// Express 5's req.query is a getter, so the parsed query goes on res.locals.query.
+export const validateQuery =
+  (schema: ZodType): RequestHandler =>
+  (req, res, next) => {
+    const result = schema.safeParse(req.query);
+    if (!result.success) {
+      next(
+        new ValidationError(result.error.issues.map((issue) => issue.message).join(", ")),
+      );
+      return;
+    }
+
+    res.locals.query = result.data;
+    next();
+  };

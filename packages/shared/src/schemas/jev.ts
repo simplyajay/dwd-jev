@@ -33,6 +33,18 @@ export type JevByMonthInput = z.infer<typeof JevByMonthInputSchema>;
 
 export type JevByDateRangeInput = z.infer<typeof JevByDateRangeInputSchema>;
 
+export const JevByIdQuerySchema = z.object({
+  includeDeleted: z
+    .stringbool({
+      truthy: ["true"],
+      falsy: ["false"],
+      case: "sensitive",
+      error: "includeDeleted must be true or false.",
+    })
+    .default(false),
+});
+export type JevByIdQuery = z.infer<typeof JevByIdQuerySchema>;
+
 export const JevUserRefSchema = UserRefWithPositionSchema;
 export type JevUserRef = z.infer<typeof JevUserRefSchema>;
 

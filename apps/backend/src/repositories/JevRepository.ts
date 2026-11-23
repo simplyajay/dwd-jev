@@ -2,15 +2,13 @@ import { Prisma } from "@prisma/client";
 import { DOCUMENT_CODE_LABELS } from "@dwd-jev/shared";
 import { prisma } from "../lib/prisma.js";
 import type { DbClient, Tx } from "../lib/transaction.js";
-import { USER_REF_SELECT } from "../utils/userRef.js";
+import { USER_REF_WITH_POSITION_SELECT } from "../utils/userRef.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import type { CreateJevInput, JournalType } from "@dwd-jev/shared";
 
-const JEV_USER_SELECT = { ...USER_REF_SELECT, position: true } as const;
-
 const JEV_FULL_INCLUDE = {
-  createdByUser: { select: JEV_USER_SELECT },
-  lastUpdatedByUser: { select: JEV_USER_SELECT },
+  createdByUser: { select: USER_REF_WITH_POSITION_SELECT },
+  lastUpdatedByUser: { select: USER_REF_WITH_POSITION_SELECT },
   accountingEntries: {
     include: { externalDocumentEntries: true },
     orderBy: { sortOrder: "asc" },
@@ -34,6 +32,11 @@ export interface JevListItemRow {
 export interface DateRange {
   startDate: Date;
   endDate: Date;
+}
+
+export interface FindJevOptions {
+  client?: DbClient;
+  includeDeleted?: boolean;
 }
 
 export interface Pagination {
@@ -115,7 +118,7 @@ const buildJevScalarData = (data: CreateJevInput) => ({
 
 export interface IJevRepository {
   create(data: CreateJevInput, createdBy: string, tx: Tx): Promise<JevWithRelations>;
-  findById(id: string, client?: DbClient): Promise<JevWithRelations | null>;
+  findById(id: string, options?: FindJevOptions): Promise<JevWithRelations | null>;
   findMany(
     range: DateRange,
     pagination: Pagination,
@@ -153,9 +156,12 @@ export class PrismaJevRepository implements IJevRepository {
     );
   }
 
-  findById(id: string, client: DbClient = prisma): Promise<JevWithRelations | null> {
+  findById(
+    id: string,
+    { client = prisma, includeDeleted = false }: FindJevOptions = {},
+  ): Promise<JevWithRelations | null> {
     return client.jev.findFirst({
-      where: { id, deletedAt: null },
+      where: { id, ...(includeDeleted ? {} : { deletedAt: null }) },
       include: JEV_FULL_INCLUDE,
     });
   }

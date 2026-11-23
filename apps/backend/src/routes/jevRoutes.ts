@@ -3,19 +3,26 @@ import {
   ConfirmPasswordInputSchema,
   CreateJevInputSchema,
   JevByDateRangeInputSchema,
+  JevByIdQuerySchema,
   JevByMonthInputSchema,
 } from "@dwd-jev/shared";
 import {
   createJev,
   deleteJev,
   getJevById,
+  getJevRevision,
   getJevsByDateRange,
   getJevsByMonth,
   updateJev,
 } from "../controllers/jevController.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { rateLimit } from "../middleware/rateLimit.js";
-import { IdParamSchema, validateBody, validateParams } from "../middleware/validate.js";
+import {
+  IdParamSchema,
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "../middleware/validate.js";
 
 // Per user, since delete takes a password.
 const jevDeleteRateLimit = rateLimit({
@@ -37,7 +44,13 @@ jevRouter.post(
 );
 
 jevRouter.post("/new", validateBody(CreateJevInputSchema), createJev);
-jevRouter.get("/:id", validateParams(IdParamSchema), getJevById);
+jevRouter.get("/revisions/:id", validateParams(IdParamSchema), getJevRevision);
+jevRouter.get(
+  "/:id",
+  validateParams(IdParamSchema),
+  validateQuery(JevByIdQuerySchema),
+  getJevById,
+);
 jevRouter.put(
   "/:id",
   validateParams(IdParamSchema),

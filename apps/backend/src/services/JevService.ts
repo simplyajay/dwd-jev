@@ -3,8 +3,8 @@ import type {
   CreateJevInput,
   Jev,
   JevListItem,
+  JevRevision,
   JevSnapshot,
-  JevUserRef,
   PaginatedResult,
 } from "@dwd-jev/shared";
 import { NotFoundError } from "../errors/AppError.js";
@@ -17,15 +17,13 @@ import type {
   JevWithRelations,
   Pagination,
 } from "../repositories/JevRepository.js";
-import type { IJevRevisionRepository } from "../repositories/JevRevisionRepository.js";
+import type {
+  IJevRevisionRepository,
+  JevRevisionRow,
+} from "../repositories/JevRevisionRepository.js";
 import type { UserService } from "./UserService.js";
 import { toDateOnly, toDateOnlyOrNull } from "../utils/dateOnly.js";
-import { toUserRef } from "../utils/userRef.js";
-
-const toJevUserRef = (user: JevWithRelations["createdByUser"]): JevUserRef => ({
-  ...toUserRef(user),
-  position: user.position,
-});
+import { toUserRefWithPosition } from "../utils/userRef.js";
 
 const formatJev = ({
   createdByUser,
@@ -33,8 +31,8 @@ const formatJev = ({
   ...jev
 }: JevWithRelations): Jev => ({
   ...jev,
-  createdBy: toJevUserRef(createdByUser),
-  lastUpdatedBy: toJevUserRef(lastUpdatedByUser),
+  createdBy: toUserRefWithPosition(createdByUser),
+  lastUpdatedBy: toUserRefWithPosition(lastUpdatedByUser),
   jevDate: toDateOnly(jev.jevDate),
   dvDate: toDateOnlyOrNull(jev.dvDate),
   adaDate: toDateOnlyOrNull(jev.adaDate),
@@ -55,6 +53,19 @@ const toJevSnapshot = ({
   deletedBy,
   ...snapshot
 }: Jev): JevSnapshot => snapshot;
+
+// The snapshots were written from toJevSnapshot, so they're already in this shape.
+const formatJevRevision = ({
+  updatedByUser,
+  beforeData,
+  afterData,
+  ...revision
+}: JevRevisionRow): JevRevision => ({
+  ...revision,
+  beforeData: beforeData as unknown as JevSnapshot | null,
+  afterData: afterData as unknown as JevSnapshot,
+  updatedBy: toUserRefWithPosition(updatedByUser),
+});
 
 const formatJevListItem = (item: JevListItemRow): JevListItem => ({
   ...item,
@@ -141,19 +152,29 @@ export class JevService {
     });
   }
 
-  async getJevById(id: string): Promise<Jev> {
-    const jev = await this.jevRepository.findById(id);
+  async getJevById(id: string, includeDeleted = false): Promise<Jev> {
+    const jev = await this.jevRepository.findById(id, { includeDeleted });
     if (!jev) {
       throw new NotFoundError("JEV not found.");
     }
     return formatJev(jev);
   }
 
+  async getJevRevision(id: string): Promise<JevRevision> {
+    const revision = await this.jevRevisionRepository.findById(id);
+    if (!revision) {
+      throw new NotFoundError("JEV revision not found.");
+    }
+    return formatJevRevision(revision);
+  }
+
   // The row lock serializes concurrent updates and deletes of the same JEV.
   updateJev(id: string, input: CreateJevInput, updatedBy: string): Promise<Jev> {
     return inTransaction(async (tx) => {
       const locked = await this.jevRepository.lockActive(id, tx);
-      const before = locked ? await this.jevRepository.findById(id, tx) : null;
+      const before = locked
+        ? await this.jevRepository.findById(id, { client: tx })
+        : null;
       if (!before) throw new NotFoundError("JEV not found.");
 
       const after = formatJev(await this.jevRepository.update(id, input, updatedBy, tx));
