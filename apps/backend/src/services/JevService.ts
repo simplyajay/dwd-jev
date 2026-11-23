@@ -15,7 +15,6 @@ import type {
   IJevRepository,
   JevListItemRow,
   JevWithRelations,
-  Pagination,
 } from "../repositories/JevRepository.js";
 import type {
   IJevRevisionRepository,
@@ -23,6 +22,7 @@ import type {
 } from "../repositories/JevRevisionRepository.js";
 import type { UserService } from "./UserService.js";
 import { toDateOnly, toDateOnlyOrNull } from "../utils/dateOnly.js";
+import { buildPaginatedResult, type Pagination } from "../utils/pagination.js";
 import { toUserRefWithPosition } from "../utils/userRef.js";
 
 const formatJev = ({
@@ -71,22 +71,6 @@ const formatJevListItem = (item: JevListItemRow): JevListItem => ({
   ...item,
   jevDate: toDateOnly(item.jevDate),
 });
-
-const buildPaginatedResult = <T>(
-  items: T[],
-  total: number,
-  pagination: Pagination,
-): PaginatedResult<T> => {
-  const t = Math.ceil(total / pagination.pageSize);
-
-  return {
-    items,
-    total,
-    page: pagination.page,
-    pageSize: pagination.pageSize,
-    totalPages: t === 0 ? 1 : t,
-  };
-};
 
 // month=0 means the whole year; otherwise 1-indexed (1=January).
 const monthDateRange = (year: number, month: number): DateRange => {

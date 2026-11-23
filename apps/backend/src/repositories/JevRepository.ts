@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { DOCUMENT_CODE_LABELS } from "@dwd-jev/shared";
 import { prisma } from "../lib/prisma.js";
 import type { DbClient, Tx } from "../lib/transaction.js";
+import type { Pagination } from "../utils/pagination.js";
 import { USER_REF_WITH_POSITION_SELECT } from "../utils/userRef.js";
 import { withUniqueConflict, type UniqueFieldMap } from "../utils/prismaErrors.js";
 import type { CreateJevInput, JournalType } from "@dwd-jev/shared";
@@ -37,11 +38,6 @@ export interface DateRange {
 export interface FindJevOptions {
   client?: DbClient;
   includeDeleted?: boolean;
-}
-
-export interface Pagination {
-  page: number;
-  pageSize: number;
 }
 
 const centsFromPesos = (pesos: number): bigint => BigInt(Math.round(pesos * 100));

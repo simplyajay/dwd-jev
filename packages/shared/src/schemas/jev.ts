@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { JournalTypeSchema } from "../enums.js";
+import { PaginationInputSchema } from "../pagination.js";
 import {
   AccountingEntrySchema,
   CreateAccountingEntryInputSchema,
@@ -10,11 +11,6 @@ import {
   SupportingDocumentEntrySchema,
 } from "./supportingDocumentEntry.js";
 import { UserRefWithPositionSchema } from "./user.js";
-
-const PaginationInputSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
-});
 
 export const JevByMonthInputSchema = PaginationInputSchema.extend({
   year: z.coerce.number().int(),

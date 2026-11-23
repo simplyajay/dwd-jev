@@ -8,6 +8,7 @@ import { UserService } from "./services/UserService.js";
 import { RefreshTokenService } from "./services/RefreshTokenService.js";
 import { AuthService } from "./services/AuthService.js";
 import { JevService } from "./services/JevService.js";
+import { AuditLogService } from "./services/AuditLogService.js";
 
 export const userRepository = new PrismaUserRepository();
 const jevRepository = new PrismaJevRepository();
@@ -32,3 +33,4 @@ export const jevService = new JevService(
   auditLogRepository,
   userService,
 );
+export const auditLogService = new AuditLogService(auditLogRepository);
