@@ -1,5 +1,5 @@
 import type { JournalType } from "@dwd-jev/shared";
-import { type ReactNode, useId } from "react";
+import { useId } from "react";
 import { Controller, type UseFormReturn, useWatch } from "react-hook-form";
 import { DatePicker } from "@/components/form/date-picker";
 import { dismissOn } from "@/components/form/dismiss-on";
@@ -15,26 +15,27 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { JevSection } from "../components/jev-section";
 import { JOURNAL_LABELS } from "../labels";
 import { AccountEntries } from "./account-entries";
-import { type JevFormValues, JOURNAL_FIELDS, switchJournal } from "./jev-form-values";
+import {
+  type JevFormValues,
+  JOURNAL_FIELDS,
+  REFERENCE_FIELDS,
+  switchJournal,
+} from "./jev-form-values";
 import { SupportingDocuments } from "./supporting-documents";
 
 const JOURNAL_ORDER: JournalType[] = ["ckdj", "cdj", "crj", "msij", "gj"];
 
 type DateFieldName = "jevDate" | "dvDate" | "adaDate" | "checkDate";
 
-/** The DV/ADA/Check number-and-date pairs, as they appear for each journal. */
-const REFERENCE_FIELDS = [
-  { number: "dvNumber", date: "dvDate", label: "DV" },
-  { number: "adaNumber", date: "adaDate", label: "ADA" },
-  { number: "checkNumber", date: "checkDate", label: "Check" },
-] as const;
-
 interface JevFormProps {
   form: UseFormReturn<JevFormValues>;
   onSubmit: (values: JevFormValues) => Promise<void>;
   submitLabel: string;
+  /** E.g. while nothing has changed. */
+  submitDisabled?: boolean;
   submitError: string | null;
   onDismissSubmitError: () => void;
 }
@@ -44,6 +45,7 @@ export function JevForm({
   form,
   onSubmit,
   submitLabel,
+  submitDisabled = false,
   submitError,
   onDismissSubmitError,
 }: JevFormProps) {
@@ -67,7 +69,7 @@ export function JevForm({
     >
       {/* Everything is locked while saving. */}
       <fieldset disabled={isSubmitting} className="min-w-0 space-y-6">
-        <FormSection title="Voucher">
+        <JevSection title="Voucher">
           <div className="grid grid-cols-3 gap-4">
             <JournalSelect form={form} />
             <TextField
@@ -100,37 +102,28 @@ export function JevForm({
               />
             )}
           </fieldset>
-        </FormSection>
+        </JevSection>
 
-        <FormSection title="Accounts and explanation">
+        <JevSection title="Accounts and explanation">
           <fieldset disabled={!journalType} className="min-w-0">
             <AccountEntries form={form} />
           </fieldset>
-        </FormSection>
+        </JevSection>
 
-        <FormSection title="Supporting documents">
+        <JevSection title="Supporting documents">
           <fieldset disabled={!journalType} className="min-w-0">
             <SupportingDocuments form={form} journalType={journalType} />
           </fieldset>
-        </FormSection>
+        </JevSection>
 
         <div className="flex items-center justify-end gap-4">
           <FormAlert message={submitError} />
-          <Button type="submit" disabled={!journalType || isSubmitting}>
+          <Button type="submit" disabled={!journalType || isSubmitting || submitDisabled}>
             {isSubmitting ? "Saving…" : submitLabel}
           </Button>
         </div>
       </fieldset>
     </form>
-  );
-}
-
-function FormSection({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="space-y-4 rounded-xl border bg-card p-5">
-      <h2 className="font-medium text-base">{title}</h2>
-      {children}
-    </section>
   );
 }
 

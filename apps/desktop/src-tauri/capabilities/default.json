@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-set-theme",
+    "core:window:allow-destroy",
     "allow-get-api-base-url",
     "allow-save-refresh-token",
     "allow-load-refresh-token",

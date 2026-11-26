@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { PageToolbar } from "@/components/layout/page-toolbar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,14 +14,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ApiError, api, type CreateJevBody, errorMessage } from "@/lib/api";
+import { auditLogQueries } from "@/features/audit-log/api/audit-log-queries";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { api, errorMessage, type JevBody } from "@/lib/api";
 import { jevQueries } from "../api/jev-queries";
 import { JevForm } from "../form/jev-form";
 import {
   emptyJevForm,
   type JevFormValues,
   jevFormResolver,
-  toCreateJevBody,
+  takenNumberField,
+  toJevBody,
 } from "../form/jev-form-values";
 import { useRememberedJevListSearch } from "../jev-list-search";
 import { BackToListButton } from "./jev-page-header";
@@ -39,21 +43,30 @@ export function JevCreatePage() {
     shouldFocusError: false, // see dismissOn
     defaultValues: emptyJevForm(),
   });
+  const guard = useUnsavedChangesGuard(
+    form.formState.isDirty,
+    "This JEV hasn't been created, so what you've entered will be lost.",
+  );
   const create = useMutation({
-    mutationFn: (input: CreateJevBody) => api.jevs.create(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: jevQueries.all }),
+    mutationFn: (input: JevBody) => api.jevs.create(input),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: jevQueries.all }),
+        queryClient.invalidateQueries({ queryKey: auditLogQueries.all }),
+      ]),
   });
 
   const onSubmit = async (values: JevFormValues) => {
     setSubmitError(null);
     try {
-      const jev = await create.mutateAsync(toCreateJevBody(values));
+      const jev = await create.mutateAsync(toJevBody(values));
       form.reset(emptyJevForm());
       setCreated(jev);
       setCreatedOpen(true);
     } catch (error) {
-      if (error instanceof ApiError && error.field === "jevNumber") {
-        form.setError("jevNumber", { message: error.message });
+      const takenField = takenNumberField(error);
+      if (takenField) {
+        form.setError(takenField, { message: errorMessage(error) });
         return;
       }
       setSubmitError(errorMessage(error));
@@ -62,7 +75,9 @@ export function JevCreatePage() {
 
   return (
     <div className="space-y-3">
-      <BackToListButton disabled={form.formState.isSubmitting} />
+      <PageToolbar>
+        <BackToListButton disabled={form.formState.isSubmitting} />
+      </PageToolbar>
 
       <JevForm
         form={form}
@@ -73,6 +88,7 @@ export function JevCreatePage() {
       />
 
       <CreatedDialog jev={created} open={createdOpen} onOpenChange={setCreatedOpen} />
+      {guard.dialog}
     </div>
   );
 }

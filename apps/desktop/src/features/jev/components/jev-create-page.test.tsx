@@ -30,6 +30,13 @@ const today = new Date();
 // The 15th of the calendar's opening month: never repeated as an outside day.
 const PICKED_DATE = toDateOnly(new Date(today.getFullYear(), today.getMonth(), 15));
 
+const CLAUDE = {
+  id: "00000000-0000-4000-8000-000000000001",
+  fullName: "Test 1, Claude",
+  isSystemAccount: false,
+  position: "Test Accountant",
+};
+
 const CREATED: Jev = {
   id: "00000000-0000-4000-8000-0000000000b1",
   journalType: "gj",
@@ -44,9 +51,9 @@ const CREATED: Jev = {
   payeeName: null,
   description: "Claude test entry",
   createdAt: new Date(),
-  createdBy: "00000000-0000-4000-8000-000000000001",
+  createdBy: CLAUDE,
   lastUpdatedAt: new Date(),
-  lastUpdatedBy: "00000000-0000-4000-8000-000000000001",
+  lastUpdatedBy: CLAUDE,
   deletedAt: null,
   deletedBy: null,
 };
