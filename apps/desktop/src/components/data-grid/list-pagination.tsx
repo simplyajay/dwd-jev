@@ -15,9 +15,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PAGE_SIZES, type PageSize } from "../jev-list-search";
+import { PAGE_SIZES, type PageSize } from "./page-size";
 
-interface JevListPaginationProps {
+interface ListPaginationProps {
   /** The shown page's numbers, all from one response, so they change together with the rows. */
   result: Omit<PaginatedResult<unknown>, "items">;
   /** The chosen rows per page; may be ahead of `result` while its page loads. */
@@ -28,13 +28,14 @@ interface JevListPaginationProps {
   onPageSizeChange: (size: PageSize) => void;
 }
 
-export function JevListPagination({
+/** Range, rows per page and page buttons under a paginated DataGrid. */
+export function ListPagination({
   result,
   pageSize,
   disabled = false,
   onPageChange,
   onPageSizeChange,
-}: JevListPaginationProps) {
+}: ListPaginationProps) {
   const { page, totalPages, total } = result;
   const pageSizeLabelId = useId();
   const first = (page - 1) * result.pageSize + 1;
