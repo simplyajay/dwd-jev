@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   ChevronsUpDownIcon,
   FileTextIcon,
+  HistoryIcon,
   LogOutIcon,
   type LucideIcon,
   PanelLeftCloseIcon,
@@ -32,6 +33,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useRememberedAuditLogSearch } from "@/features/audit-log/audit-log-search";
 import { useAuth, useCurrentUser } from "@/features/auth/auth-context";
 import { useRememberedJevListSearch } from "@/features/jev/jev-list-search";
 import { useSettingsDialog } from "@/features/settings/use-settings-dialog";
@@ -40,7 +42,7 @@ import { cn } from "@/lib/utils";
 
 interface NavItem {
   label: string;
-  to: "/jevs" | "/journals" | "/trial-balance";
+  to: "/jevs" | "/journals" | "/trial-balance" | "/audit-logs";
   icon: LucideIcon;
 }
 
@@ -48,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Journal Entry Vouchers", to: "/jevs", icon: FileTextIcon },
   { label: "Journals", to: "/journals", icon: BookOpenIcon },
   { label: "Trial Balance", to: "/trial-balance", icon: ScaleIcon },
+  { label: "Audit Log", to: "/audit-logs", icon: HistoryIcon },
 ];
 
 const ACTIVE_ITEM =
@@ -132,7 +135,11 @@ function SidebarBrand({ canExpand }: { canExpand: boolean }) {
 
 function MainNav() {
   const matchRoute = useMatchRoute();
-  const jevListSearch = useRememberedJevListSearch();
+  // Lists reopen as they were left.
+  const rememberedSearch = {
+    "/jevs": useRememberedJevListSearch(),
+    "/audit-logs": useRememberedAuditLogSearch(),
+  };
 
   return (
     <SidebarMenu>
@@ -146,8 +153,7 @@ function MainNav() {
           >
             <Link
               to={to}
-              // From a JEV's page, return to the list as it was left.
-              search={to === "/jevs" ? jevListSearch : {}}
+              search={to === "/jevs" || to === "/audit-logs" ? rememberedSearch[to] : {}}
               disabled={!!matchRoute({ to, includeSearch: false })}
             >
               <Icon />

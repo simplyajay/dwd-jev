@@ -14,10 +14,12 @@ import { Route as AuthRouteRouteImport } from './routes/_auth/route'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as AuthRegisterRouteImport } from './routes/_auth/register'
+import { Route as AppAuditLogsIndexRouteImport } from './routes/_app/audit-logs/index'
 import { Route as AppJevsIndexRouteImport } from './routes/_app/jevs/index'
 import { Route as AppJevsNewRouteImport } from './routes/_app/jevs/new'
 import { Route as AppJournalsIndexRouteImport } from './routes/_app/journals/index'
 import { Route as AppTrialBalanceIndexRouteImport } from './routes/_app/trial-balance/index'
+import { Route as AppAuditLogsActionDocumentIdRouteImport } from './routes/_app/audit-logs/$action/$documentId'
 import { Route as AppJevsJevIdIndexRouteImport } from './routes/_app/jevs/$jevId/index'
 import { Route as AppJevsJevIdEditRouteImport } from './routes/_app/jevs/$jevId/edit'
 
@@ -44,6 +46,11 @@ const AuthRegisterRoute = AuthRegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const AppAuditLogsIndexRoute = AppAuditLogsIndexRouteImport.update({
+  id: '/audit-logs/',
+  path: '/audit-logs/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 const AppJevsIndexRoute = AppJevsIndexRouteImport.update({
   id: '/jevs/',
   path: '/jevs/',
@@ -64,6 +71,12 @@ const AppTrialBalanceIndexRoute = AppTrialBalanceIndexRouteImport.update({
   path: '/trial-balance/',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppAuditLogsActionDocumentIdRoute =
+  AppAuditLogsActionDocumentIdRouteImport.update({
+    id: '/audit-logs/$action/$documentId',
+    path: '/audit-logs/$action/$documentId',
+    getParentRoute: () => AppRouteRoute,
+  } as any)
 const AppJevsJevIdIndexRoute = AppJevsJevIdIndexRouteImport.update({
   id: '/jevs/$jevId/',
   path: '/jevs/$jevId/',
@@ -80,9 +93,11 @@ export interface FileRoutesByFullPath {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/jevs/new': typeof AppJevsNewRoute
+  '/audit-logs/': typeof AppAuditLogsIndexRoute
   '/jevs/': typeof AppJevsIndexRoute
   '/journals/': typeof AppJournalsIndexRoute
   '/trial-balance/': typeof AppTrialBalanceIndexRoute
+  '/audit-logs/$action/$documentId': typeof AppAuditLogsActionDocumentIdRoute
   '/jevs/$jevId/edit': typeof AppJevsJevIdEditRoute
   '/jevs/$jevId/': typeof AppJevsJevIdIndexRoute
 }
@@ -91,9 +106,11 @@ export interface FileRoutesByTo {
   '/login': typeof AuthLoginRoute
   '/register': typeof AuthRegisterRoute
   '/jevs/new': typeof AppJevsNewRoute
+  '/audit-logs': typeof AppAuditLogsIndexRoute
   '/jevs': typeof AppJevsIndexRoute
   '/journals': typeof AppJournalsIndexRoute
   '/trial-balance': typeof AppTrialBalanceIndexRoute
+  '/audit-logs/$action/$documentId': typeof AppAuditLogsActionDocumentIdRoute
   '/jevs/$jevId/edit': typeof AppJevsJevIdEditRoute
   '/jevs/$jevId': typeof AppJevsJevIdIndexRoute
 }
@@ -105,9 +122,11 @@ export interface FileRoutesById {
   '/_auth/register': typeof AuthRegisterRoute
   '/_app/': typeof AppIndexRoute
   '/_app/jevs/new': typeof AppJevsNewRoute
+  '/_app/audit-logs/': typeof AppAuditLogsIndexRoute
   '/_app/jevs/': typeof AppJevsIndexRoute
   '/_app/journals/': typeof AppJournalsIndexRoute
   '/_app/trial-balance/': typeof AppTrialBalanceIndexRoute
+  '/_app/audit-logs/$action/$documentId': typeof AppAuditLogsActionDocumentIdRoute
   '/_app/jevs/$jevId/edit': typeof AppJevsJevIdEditRoute
   '/_app/jevs/$jevId/': typeof AppJevsJevIdIndexRoute
 }
@@ -118,9 +137,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/jevs/new'
+    | '/audit-logs/'
     | '/jevs/'
     | '/journals/'
     | '/trial-balance/'
+    | '/audit-logs/$action/$documentId'
     | '/jevs/$jevId/edit'
     | '/jevs/$jevId/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,9 +150,11 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/jevs/new'
+    | '/audit-logs'
     | '/jevs'
     | '/journals'
     | '/trial-balance'
+    | '/audit-logs/$action/$documentId'
     | '/jevs/$jevId/edit'
     | '/jevs/$jevId'
   id:
@@ -142,9 +165,11 @@ export interface FileRouteTypes {
     | '/_auth/register'
     | '/_app/'
     | '/_app/jevs/new'
+    | '/_app/audit-logs/'
     | '/_app/jevs/'
     | '/_app/journals/'
     | '/_app/trial-balance/'
+    | '/_app/audit-logs/$action/$documentId'
     | '/_app/jevs/$jevId/edit'
     | '/_app/jevs/$jevId/'
   fileRoutesById: FileRoutesById
@@ -191,6 +216,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/_app/audit-logs/': {
+      id: '/_app/audit-logs/'
+      path: '/audit-logs'
+      fullPath: '/audit-logs/'
+      preLoaderRoute: typeof AppAuditLogsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/jevs/': {
       id: '/_app/jevs/'
       path: '/jevs'
@@ -219,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTrialBalanceIndexRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/_app/audit-logs/$action/$documentId': {
+      id: '/_app/audit-logs/$action/$documentId'
+      path: '/audit-logs/$action/$documentId'
+      fullPath: '/audit-logs/$action/$documentId'
+      preLoaderRoute: typeof AppAuditLogsActionDocumentIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
     '/_app/jevs/$jevId/': {
       id: '/_app/jevs/$jevId/'
       path: '/jevs/$jevId'
@@ -239,9 +278,11 @@ declare module '@tanstack/react-router' {
 interface AppRouteRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppJevsNewRoute: typeof AppJevsNewRoute
+  AppAuditLogsIndexRoute: typeof AppAuditLogsIndexRoute
   AppJevsIndexRoute: typeof AppJevsIndexRoute
   AppJournalsIndexRoute: typeof AppJournalsIndexRoute
   AppTrialBalanceIndexRoute: typeof AppTrialBalanceIndexRoute
+  AppAuditLogsActionDocumentIdRoute: typeof AppAuditLogsActionDocumentIdRoute
   AppJevsJevIdEditRoute: typeof AppJevsJevIdEditRoute
   AppJevsJevIdIndexRoute: typeof AppJevsJevIdIndexRoute
 }
@@ -249,9 +290,11 @@ interface AppRouteRouteChildren {
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppJevsNewRoute: AppJevsNewRoute,
+  AppAuditLogsIndexRoute: AppAuditLogsIndexRoute,
   AppJevsIndexRoute: AppJevsIndexRoute,
   AppJournalsIndexRoute: AppJournalsIndexRoute,
   AppTrialBalanceIndexRoute: AppTrialBalanceIndexRoute,
+  AppAuditLogsActionDocumentIdRoute: AppAuditLogsActionDocumentIdRoute,
   AppJevsJevIdEditRoute: AppJevsJevIdEditRoute,
   AppJevsJevIdIndexRoute: AppJevsJevIdIndexRoute,
 }
