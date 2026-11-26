@@ -35,3 +35,16 @@ const DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
 export function formatDate(value: Date): string {
   return DATE_FORMAT.format(value);
 }
+
+const DATE_TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
+  year: "numeric",
+  month: "short",
+  day: "2-digit",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
+/** Formats a point in time with its local time, e.g. "Nov 24, 2026, 3:05 PM". */
+export function formatDateTime(value: Date): string {
+  return DATE_TIME_FORMAT.format(value);
+}

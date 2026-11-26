@@ -1,3 +1,4 @@
+import { auditLogsApi } from "./audit-logs-api";
 import { authApi } from "./auth-api";
 import { jevsApi } from "./jevs-api";
 import type { Api } from "./types";
@@ -7,7 +8,8 @@ export const api: Api = {
   auth: authApi,
   users: usersApi,
   jevs: jevsApi,
+  auditLogs: auditLogsApi,
 };
 
-export { ApiError, errorMessage } from "./errors";
-export type { Api, AuthSession, CreateJevBody, JevListRow } from "./types";
+export { ApiError, errorMessage, tooManyRequestsMessage } from "./errors";
+export type { Api, AuthSession, JevBody, JevListRow } from "./types";

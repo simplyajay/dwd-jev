@@ -1,9 +1,13 @@
 import type {
+  AuditLog,
+  AuditLogListInput,
   ConfirmPasswordInput,
   CreateJevInputSchema,
   CreateUserInput,
   Jev,
   JevByMonthInput,
+  JevListItem,
+  JevRevision,
   LoginInput,
   PaginatedResult,
   SafeUserType,
@@ -16,15 +20,15 @@ import type {
   UserSummary,
 } from "@dwd-jev/shared";
 import type { z } from "zod";
-import type { AuthSessionSchema, JevListRowSchema } from "./schemas";
+import type { AuthSessionSchema } from "./schemas";
 
-export type JevListRow = z.output<typeof JevListRowSchema>;
+export type JevListRow = JevListItem;
 
 /** What login and refresh return. */
 export type AuthSession = z.output<typeof AuthSessionSchema>;
 
-/** The create body as sent: dates as "YYYY-MM-DD" strings and amounts in pesos. */
-export type CreateJevBody = z.input<typeof CreateJevInputSchema>;
+/** The create/update body as sent: dates as "YYYY-MM-DD" strings and amounts in pesos. */
+export type JevBody = z.input<typeof CreateJevInputSchema>;
 
 /** Everything the UI needs from the backend. Screens depend only on this. */
 export interface Api {
@@ -56,10 +60,19 @@ export interface Api {
   jevs: {
     /** `month: 0` lists the whole year. */
     listByMonth(input: JevByMonthInput): Promise<PaginatedResult<JevListRow>>;
-    /** Amounts are in cents. */
-    get(id: string): Promise<Jev>;
-    /** 409 with field "jevNumber" when the number is taken. */
-    create(input: CreateJevBody): Promise<Jev>;
+    /** Amounts are in cents. A deleted JEV is a 404 unless `includeDeleted`. */
+    get(id: string, options?: { includeDeleted?: boolean }): Promise<Jev>;
+    /** 409 with a field (e.g. "jevNumber") when a number is taken. */
+    create(input: JevBody): Promise<Jev>;
+    /** Replaces the whole JEV. Every save is a new revision, even without changes. */
+    update(id: string, input: JevBody): Promise<Jev>;
+    /** 403 with field "password" for a wrong password. */
     delete(id: string, input: ConfirmPasswordInput): Promise<void>;
+    /** A create or update revision; its id is that audit log's `documentId`. */
+    getRevision(id: string): Promise<JevRevision>;
+  };
+  auditLogs: {
+    /** Newest first. */
+    list(input: AuditLogListInput): Promise<PaginatedResult<AuditLog>>;
   };
 }

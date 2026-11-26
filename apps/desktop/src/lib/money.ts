@@ -16,3 +16,12 @@ export function parsePesos(text: string): number | undefined {
   const value = Number(cleaned);
   return Number.isFinite(value) ? Math.round(value * 100) / 100 : undefined;
 }
+
+/** API cents as pesos, e.g. 500030n -> 5000.3. */
+export function centsToPesos(cents: bigint): number {
+  return Number(cents) / 100;
+}
+
+export function formatCents(cents: bigint): string {
+  return formatPesos(centsToPesos(cents));
+}

@@ -1,4 +1,4 @@
-import { JevListItemSchema, SafeUserSchema } from "@dwd-jev/shared";
+import { SafeUserSchema } from "@dwd-jev/shared";
 import { z } from "zod";
 
 // Response schemas: parsing turns date strings into Dates and catches contract drift.
@@ -21,14 +21,15 @@ export function paginatedSchema<TItem extends z.ZodType>(item: TItem) {
   });
 }
 
-/** A JEV list row, plus `description` until shared has it. */
-export const JevListRowSchema = JevListItemSchema.extend({
-  description: z.string().nullish(),
-});
-
 /** Body of every error response. */
 export const ErrorBodySchema = z.object({
   code: z.number(),
   message: z.string(),
-  details: z.object({ field: z.string().optional() }).optional(),
+  details: z
+    .object({
+      field: z.string().optional(),
+      /** On 429: seconds until the limit resets. */
+      retryAfterSeconds: z.number().int().optional(),
+    })
+    .optional(),
 });
