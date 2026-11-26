@@ -29,6 +29,12 @@ vi.mock("@/features/chart-of-accounts/components/chart-of-accounts-settings", ()
 }));
 vi.mock("@/features/theme/components/theme-settings", () => ({ ThemeSettings: () => null }));
 
+// The config's clearMocks sometimes kept the previous test's calls.
+beforeEach(() => {
+  switchTab.mockClear();
+  close.mockClear();
+});
+
 describe("SettingsDialog focus", () => {
   it("focuses the dialog itself on open, not the first tab", () => {
     render(<SettingsDialog />);

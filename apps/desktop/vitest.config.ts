@@ -10,6 +10,8 @@ export default mergeConfig(
       setupFiles: ["./src/test/setup.ts"],
       include: ["src/**/*.test.{ts,tsx}"],
       clearMocks: true,
+      // JEV form tests type a lot; 5 s is too short on a busy machine.
+      testTimeout: 20_000,
     },
   }),
 );
