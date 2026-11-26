@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 /** One line, cut off with "…"; hovering shows the whole text, but only when it was cut off. */
-export function TruncatedText({ text }: { text: string }) {
+export function TruncatedText({ text, className }: { text: string; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [open, setOpen] = useState(false);
 
@@ -15,7 +16,7 @@ export function TruncatedText({ text }: { text: string }) {
   return (
     <Tooltip open={open} onOpenChange={(next) => setOpen(next && isClipped())}>
       <TooltipTrigger asChild>
-        <span ref={ref} className="block truncate">
+        <span ref={ref} className={cn("block truncate", className)}>
           {text}
         </span>
       </TooltipTrigger>

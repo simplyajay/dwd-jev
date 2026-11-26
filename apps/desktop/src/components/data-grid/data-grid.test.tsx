@@ -1,5 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { createDataGridColumnHelper, DataGrid } from "./data-grid";
 
 interface Fruit {
@@ -21,17 +22,34 @@ const fruits: Fruit[] = [
 
 function renderGrid(props: Partial<React.ComponentProps<typeof DataGrid<Fruit>>> = {}) {
   return render(
-    <DataGrid
-      label="Fruits"
-      columns={columns}
-      data={fruits}
-      getRowId={(fruit) => fruit.id}
-      {...props}
-    />,
+    <TooltipProvider>
+      <DataGrid
+        label="Fruits"
+        columns={columns}
+        data={fruits}
+        getRowId={(fruit) => fruit.id}
+        {...props}
+      />
+    </TooltipProvider>,
   );
 }
 
 describe("DataGrid", () => {
+  it("sizes columns in rem, squeezing grow columns before ones with a minSize", () => {
+    renderGrid({
+      columns: [
+        column.accessor("id", { header: "Code", size: 180, meta: { minSize: 96 } }),
+        column.accessor("name", { header: "Name", size: 128, meta: { grow: true } }),
+        column.accessor("price", { header: "Price", size: 120 }),
+      ],
+    });
+
+    const headerRow = screen.getAllByRole("row")[0] as HTMLElement;
+    expect(headerRow.style.gridTemplateColumns).toBe(
+      "minmax(6rem, 11.25rem) minmax(8rem, 1fr) 7.5rem",
+    );
+  });
+
   it("renders a header row and one row per item", () => {
     renderGrid();
 

@@ -7,6 +7,7 @@ import {
   DataGrid,
   type DataGridColumn,
 } from "@/components/data-grid/data-grid";
+import { TruncatedText } from "@/components/truncated-text";
 import { Input } from "@/components/ui/input";
 import { useCurrentUser } from "@/features/auth/auth-context";
 import { SettingsLoadError } from "@/features/settings/components/settings-section";
@@ -26,24 +27,30 @@ export function Members({ onOpen }: { onOpen: (id: string) => void }) {
     const list: DataGridColumn<UserSummary>[] = [
       column.accessor("fullName", {
         header: "Name",
-        size: 200,
+        size: 112,
         meta: { grow: true },
         cell: (cell) => (
-          <>
-            {cell.getValue()}
+          // "(you)" stays visible; only the name is cut off.
+          <span className="flex min-w-0">
+            <TruncatedText text={cell.getValue()} />
             {cell.row.original.id === currentUser.id && (
-              <span className="text-muted-foreground"> (you)</span>
+              <span className="shrink-0 whitespace-pre text-muted-foreground"> (you)</span>
             )}
-          </>
+          </span>
         ),
       }),
-      column.accessor("position", { header: "Position", size: 160, meta: { grow: true } }),
+      column.accessor("position", {
+        header: "Position",
+        size: 112,
+        meta: { grow: true },
+        cell: (cell) => <TruncatedText text={cell.getValue()} />,
+      }),
     ];
     if (showStatus) {
       list.push(
         column.accessor("status", {
           header: "Status",
-          size: 130,
+          size: 112,
           cell: (cell) => <StatusBadge status={cell.getValue()} />,
         }),
       );

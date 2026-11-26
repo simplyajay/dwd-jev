@@ -15,13 +15,18 @@ import {
   type SyntheticEvent,
   useRef,
 } from "react";
+import { TruncatedText } from "@/components/truncated-text";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useElementWidth } from "@/hooks/use-element-width";
 import { cn } from "@/lib/utils";
 
+// `size` is px at 16px text; the grid uses it as rem so columns scale with Windows text size.
+
 export interface DataGridColumnMeta {
-  /** Column takes the leftover width; its `size` becomes the minimum. */
-  grow?: boolean;
+  /** Shares the leftover width by this weight (true = 1); `size` is its minimum. */
+  grow?: boolean | number;
+  /** Lets a fixed column shrink to this, only after the grow columns reach their minimum. */
+  minSize?: number;
   align?: "left" | "right";
 }
 
@@ -81,13 +86,22 @@ export function DataGrid<TData extends RowData>({
   const headers = table.getHeaderGroups().flatMap((group) => group.headers);
   const rows = table.getRowModel().rows;
 
+  const rem = (size: number) => `${size / 16}rem`;
   const gridTemplateColumns = headers
     .map((header) => {
-      const size = header.getSize();
-      return header.column.columnDef.meta?.grow ? `minmax(${size}px, 1fr)` : `${size}px`;
+      const size = rem(header.getSize());
+      const meta = header.column.columnDef.meta;
+      if (meta?.grow) return `minmax(${size}, ${meta.grow === true ? 1 : meta.grow}fr)`;
+      return meta?.minSize === undefined ? size : `minmax(${rem(meta.minSize)}, ${size})`;
     })
     .join(" ");
-  const minWidth = headers.reduce((total, header) => total + header.getSize(), 0);
+  // Scrolls sideways only when even the minimums don't fit.
+  const minWidth = rem(
+    headers.reduce(
+      (total, header) => total + (header.column.columnDef.meta?.minSize ?? header.getSize()),
+      0,
+    ),
+  );
   const alignClass = (meta: DataGridColumnMeta | undefined) =>
     meta?.align === "right" && "justify-end text-right";
 
@@ -127,9 +141,13 @@ export function DataGrid<TData extends RowData>({
                   alignClass(header.column.columnDef.meta),
                 )}
               >
-                <span className="truncate">
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                </span>
+                {typeof header.column.columnDef.header === "string" ? (
+                  <TruncatedText text={header.column.columnDef.header} />
+                ) : (
+                  <span className="truncate">
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                  </span>
+                )}
               </div>
             ))}
           </div>
