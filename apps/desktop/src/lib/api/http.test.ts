@@ -191,6 +191,20 @@ describe("auth API errors", () => {
     expect(error.message).toBe("Username is already taken.");
   });
 
+  it("says how long to wait on a 429", async () => {
+    respond(429, {
+      code: 429,
+      message: "Too many requests. Please try again later.",
+      details: { retryAfterSeconds: 90 },
+    });
+
+    const error = await failure(authApi.login(CREDENTIALS));
+
+    expect(error.status).toBe(429);
+    expect(error.retryAfterSeconds).toBe(90);
+    expect(error.message).toBe("Too many requests. Try again in 1 minute and 30 seconds.");
+  });
+
   it("hides raw validator output (400) and server internals (5xx)", async () => {
     respond(400, { code: 400, message: "Too small: expected string to have >=8 characters" });
     respond(500, { code: 500, message: "PrismaClientKnownRequestError: ..." });

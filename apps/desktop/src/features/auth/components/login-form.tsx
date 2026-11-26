@@ -9,7 +9,8 @@ import { TextField } from "@/components/form/text-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { errorMessage } from "@/lib/api";
+import { useCountdown } from "@/hooks/use-countdown";
+import { ApiError, errorMessage, tooManyRequestsMessage } from "@/lib/api";
 import { useAuth } from "../auth-context";
 import { forgetUsername, readRememberedUsername, rememberUsername } from "../remembered-username";
 import { AuthHeading } from "./auth-split-layout";
@@ -20,6 +21,9 @@ export function LoginForm() {
   // Read once on mount; drives both the prefilled username and the checkbox.
   const [rememberedUsername] = useState(readRememberedUsername);
   const [remember, setRemember] = useState(rememberedUsername !== null);
+  // After a 429, Sign in waits out the limit.
+  const retryWait = useCountdown();
+  const waiting = retryWait.secondsLeft > 0;
   const form = useForm<LoginInput>({
     resolver: zodResolver(LoginInputSchema),
     // Errors clear on focus, so focusing the first invalid field would erase them.
@@ -52,6 +56,10 @@ export function LoginForm() {
       await login(values);
       if (remember) rememberUsername(values.username);
     } catch (error) {
+      if (error instanceof ApiError && error.retryAfterSeconds) {
+        retryWait.start(error.retryAfterSeconds);
+        return;
+      }
       setSubmitError(errorMessage(error));
     }
   });
@@ -90,9 +98,11 @@ export function LoginForm() {
             </FieldLabel>
           </Field>
 
-          <FormAlert message={submitError} />
+          <FormAlert
+            message={waiting ? tooManyRequestsMessage(retryWait.secondsLeft) : submitError}
+          />
 
-          <Button type="submit" size="lg" disabled={isSubmitting}>
+          <Button type="submit" size="lg" disabled={isSubmitting || waiting}>
             {isSubmitting ? "Signing in…" : "Sign in"}
           </Button>
 

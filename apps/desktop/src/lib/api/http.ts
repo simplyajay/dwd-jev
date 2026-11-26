@@ -2,7 +2,12 @@ import { fetch } from "@tauri-apps/plugin-http";
 import type { z } from "zod";
 import { getApiBaseUrl } from "@/lib/tauri/commands";
 import { getAccessToken } from "./access-token";
-import { ApiError, NETWORK_ERROR_MESSAGE, UNEXPECTED_ERROR_MESSAGE } from "./errors";
+import {
+  ApiError,
+  NETWORK_ERROR_MESSAGE,
+  tooManyRequestsMessage,
+  UNEXPECTED_ERROR_MESSAGE,
+} from "./errors";
 import { ErrorBodySchema } from "./schemas";
 
 // JSON client over the Tauri HTTP plugin: no CORS, and only the API origin is reachable.
@@ -102,6 +107,11 @@ async function readResponse<TSchema extends z.ZodType>(
 function toApiError(status: number, payload: unknown): ApiError {
   const parsed = ErrorBodySchema.safeParse(payload);
   if (!parsed.success) return new ApiError(status, UNEXPECTED_ERROR_MESSAGE);
+
+  if (status === 429) {
+    const seconds = parsed.data.details?.retryAfterSeconds;
+    return new ApiError(status, tooManyRequestsMessage(seconds), undefined, seconds);
+  }
 
   // 5xx messages are internals. A 400 is meant for users only when it names
   // the field it's about; otherwise it's raw validator output.

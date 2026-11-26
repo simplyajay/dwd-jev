@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ApiError } from "@/lib/api";
 import { LoginForm } from "./login-form";
@@ -106,5 +106,36 @@ describe("LoginForm field errors", () => {
     expect(screen.queryByText("Please enter your username.")).not.toBeInTheDocument();
     expect(screen.getByText("Please enter your password.")).toBeInTheDocument();
     expect(login).not.toHaveBeenCalled();
+  });
+});
+
+describe("LoginForm rate limit", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("counts down the wait with Sign in disabled, then allows it again", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    login.mockRejectedValueOnce(
+      new ApiError(429, "Too many requests. Try again in 1 minute and 1 second.", undefined, 61),
+    );
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<LoginForm />);
+
+    await user.type(screen.getByLabelText("Username"), "someone");
+    await user.type(screen.getByLabelText("Password"), "password");
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Too many requests. Try again in 1 minute and 1 second.",
+    );
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeDisabled();
+
+    await act(() => vi.advanceTimersByTimeAsync(2_000));
+    expect(screen.getByRole("alert")).toHaveTextContent("Try again in 59 seconds.");
+
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeEnabled();
   });
 });
