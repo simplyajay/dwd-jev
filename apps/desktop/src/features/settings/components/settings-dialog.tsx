@@ -93,15 +93,14 @@ export function SettingsDialog() {
           {tabs.map(({ id, label }) => {
             const Panel = PANELS[id];
             return (
-              <Tabs.Content
-                key={id}
-                value={id}
-                className="min-h-0 overflow-y-auto p-6 pr-12 outline-none"
-              >
-                <h2 className="mb-6 font-semibold text-lg">{label}</h2>
-                <UnsavedChangesContext.Provider value={reportUnsaved}>
-                  <Panel />
-                </UnsavedChangesContext.Provider>
+              // Fixed heading, scrolling body: the close button never covers content.
+              <Tabs.Content key={id} value={id} className="flex min-h-0 flex-col outline-none">
+                <h2 className="p-6 pr-12 font-semibold text-lg">{label}</h2>
+                <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+                  <UnsavedChangesContext.Provider value={reportUnsaved}>
+                    <Panel />
+                  </UnsavedChangesContext.Provider>
+                </div>
               </Tabs.Content>
             );
           })}
