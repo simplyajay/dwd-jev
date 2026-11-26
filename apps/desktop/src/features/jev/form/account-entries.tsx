@@ -15,7 +15,13 @@ import { formatPesos } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { ExternalDocuments } from "./external-documents";
 import { type JevFormValues, MIN_ACCOUNT_ROWS, newAccountRow } from "./jev-form-values";
-import { EDITABLE_ROW, ACCOUNT_GRID as GRID, ROW_DIVIDERS, SHOW_ON_ROW_HOVER } from "./row-styles";
+import {
+  EDITABLE_ROW,
+  ACCOUNT_GRID as GRID,
+  ROW_DIVIDERS,
+  SHOW_ON_ROW_HOVER,
+  TABLE_HEADING,
+} from "./row-styles";
 
 const SIDES: readonly EntryType[] = ["debit", "credit"];
 const SIDE_LABELS: Record<EntryType, string> = { debit: "Debit", credit: "Credit" };
@@ -42,12 +48,7 @@ export function AccountEntries({ form }: { form: UseFormReturn<JevFormValues> })
 
   return (
     <div>
-      <div
-        className={cn(
-          GRID,
-          "border-table-divider border-b px-1 pb-1 font-medium text-table-header text-xs uppercase tracking-wide",
-        )}
-      >
+      <div className={cn(GRID, TABLE_HEADING)}>
         <span>Account code</span>
         <span>Account name</span>
         {/* pr-2.5 matches the fields' padding, so headings line up with amounts. */}

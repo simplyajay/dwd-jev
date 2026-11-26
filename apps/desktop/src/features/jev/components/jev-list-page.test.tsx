@@ -18,7 +18,7 @@ import { JevListPage } from "./jev-list-page";
 
 vi.mock("@/lib/api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api")>();
-  return { ...actual, api: { jevs: { listByMonth: vi.fn(), delete: vi.fn() } } };
+  return { ...actual, api: { jevs: { listByMonth: vi.fn() } } };
 });
 
 // Radix Select and the router use browser APIs jsdom lacks.
@@ -32,6 +32,7 @@ const JEV: JevListRow = {
   jevNumber: "2026-01-0001",
   journalType: "gj",
   jevDate: "2026-01-28",
+  description: "Claude test entry",
 };
 
 function result(
@@ -44,11 +45,6 @@ function result(
 function ViewStub() {
   const { jevId } = useParams({ strict: false });
   return <p>Viewing {jevId}</p>;
-}
-
-function EditStub() {
-  const { jevId } = useParams({ strict: false });
-  return <p>Editing {jevId}</p>;
 }
 
 /** The real list page under the same route IDs it reads, with stand-ins for the others. */
@@ -66,11 +62,6 @@ function renderList(url = "/jevs?year=2026&month=1") {
     path: "/jevs/$jevId/",
     component: ViewStub,
   });
-  const editRoute = createRoute({
-    getParentRoute: () => appRoute,
-    path: "/jevs/$jevId/edit",
-    component: EditStub,
-  });
   const createPageRoute = createRoute({
     getParentRoute: () => appRoute,
     path: "/jevs/new",
@@ -78,7 +69,7 @@ function renderList(url = "/jevs?year=2026&month=1") {
   });
   const router = createRouter({
     routeTree: rootRoute.addChildren([
-      appRoute.addChildren([listRoute, createPageRoute, viewRoute, editRoute]),
+      appRoute.addChildren([listRoute, createPageRoute, viewRoute]),
     ]),
     history: createMemoryHistory({ initialEntries: [url] }),
   });
@@ -101,7 +92,6 @@ beforeEach(() => {
   vi.mocked(api.jevs.listByMonth)
     .mockReset()
     .mockResolvedValue(result([JEV]));
-  vi.mocked(api.jevs.delete).mockReset().mockResolvedValue(undefined);
 });
 
 describe("JevListPage", () => {
@@ -111,7 +101,8 @@ describe("JevListPage", () => {
       result([JEV], { page, total: 45, totalPages: 3 }),
     );
     renderList();
-    await screen.findByText("2026-01-0001");
+    // The first render can take over a second when the whole suite runs.
+    await screen.findByText("2026-01-0001", undefined, { timeout: 5_000 });
     vi.mocked(api.jevs.listByMonth).mockReturnValue(new Promise(() => {}));
 
     await user.click(screen.getByRole("button", { name: "Next page" }));
@@ -137,8 +128,8 @@ describe("JevListPage", () => {
   it("shows Date, JEV No., Journal, Description and Actions, in that order", async () => {
     vi.mocked(api.jevs.listByMonth).mockResolvedValue(
       result([
-        JEV,
-        { ...JEV, id: "00000000-0000-4000-8000-0000000000a2", description: "Claude test entry" },
+        { ...JEV, description: "" },
+        { ...JEV, id: "00000000-0000-4000-8000-0000000000a2" },
       ]),
     );
     renderList();
@@ -157,7 +148,7 @@ describe("JevListPage", () => {
     expect(within(withoutDescription as HTMLElement).getAllByRole("cell")[0]).toHaveTextContent(
       "Jan 28, 2026",
     );
-    // Until the backend sends it, the cell shows a dash.
+    // An empty description shows a dash.
     expect(within(withoutDescription as HTMLElement).getAllByRole("cell")[3]).toHaveTextContent(
       "—",
     );
@@ -292,29 +283,12 @@ describe("JevListPage", () => {
     expect(await screen.findByText(`Viewing ${JEV.id}`)).toBeInTheDocument();
   });
 
-  it("opens Edit from the actions menu without opening the row", async () => {
+  it("opens the JEV from its View link", async () => {
     const user = userEvent.setup();
     renderList();
 
-    await user.click(await screen.findByRole("button", { name: "Actions for JEV 2026-01-0001" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Edit" }));
+    await user.click(await screen.findByRole("link", { name: "View" }));
 
-    expect(await screen.findByText(`Editing ${JEV.id}`)).toBeInTheDocument();
-  });
-
-  it("deletes from the actions menu after the password, staying on the list", async () => {
-    const user = userEvent.setup();
-    renderList();
-
-    await user.click(await screen.findByRole("button", { name: "Actions for JEV 2026-01-0001" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete JEV 2026-01-0001" });
-    expect(dialog).toHaveTextContent("This can't be undone.");
-    await user.type(within(dialog).getByLabelText("Your password"), "claude-test-password-1");
-    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
-
-    expect(api.jevs.delete).toHaveBeenCalledWith(JEV.id, { password: "claude-test-password-1" });
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByText("2026-01-0001")).toBeInTheDocument();
+    expect(await screen.findByText(`Viewing ${JEV.id}`)).toBeInTheDocument();
   });
 });

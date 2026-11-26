@@ -24,6 +24,7 @@ import {
   SUPPORTING_DOCUMENT_GRID as GRID,
   ROW_DIVIDERS,
   SHOW_ON_ROW_HOVER,
+  TABLE_HEADING,
 } from "./row-styles";
 
 interface SupportingDocumentsProps {
@@ -42,12 +43,7 @@ export function SupportingDocuments({ form, journalType }: SupportingDocumentsPr
   return (
     <div>
       {fields.length > 0 && (
-        <div
-          className={cn(
-            GRID,
-            "border-table-divider border-b px-1 pb-1 font-medium text-table-header text-xs uppercase tracking-wide",
-          )}
-        >
+        <div className={cn(GRID, TABLE_HEADING)}>
           <span>Document no.</span>
           <span>Type</span>
           <span>Date</span>

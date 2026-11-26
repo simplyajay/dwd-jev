@@ -1,17 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getRouteApi, Link, useNavigate } from "@tanstack/react-router";
-import { EllipsisIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { getRouteApi, Link } from "@tanstack/react-router";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { createDataGridColumnHelper, DataGrid } from "@/components/data-grid/data-grid";
-import { PasswordConfirmDialog } from "@/components/password-confirm-dialog";
+import { ListPagination } from "@/components/data-grid/list-pagination";
+import { type PageSize, readPageSize, storePageSize } from "@/components/data-grid/page-size";
 import { TruncatedText } from "@/components/truncated-text";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -20,20 +15,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SettingsLoadError } from "@/features/settings/components/settings-section";
-import { api, type JevListRow } from "@/lib/api";
+import type { JevListRow } from "@/lib/api";
 import { formatDateOnly } from "@/lib/dates";
 import { jevQueries } from "../api/jev-queries";
 import {
+  JEV_PAGE_SIZE_KEY,
   JEV_YEARS,
   type JevListSearch,
-  type PageSize,
-  readPageSize,
   rememberJevListSearch,
   resolveJevListSearch,
-  storePageSize,
 } from "../jev-list-search";
 import { JOURNAL_SHORT_LABELS } from "../labels";
-import { JevListPagination } from "./jev-list-pagination";
 
 const route = getRouteApi("/_app/jevs/");
 
@@ -47,16 +39,12 @@ export function JevListPage() {
   const search = route.useSearch();
   const navigate = route.useNavigate();
   const { year, month, page } = resolveJevListSearch(search);
-  const [pageSize, setPageSize] = useState<PageSize>(readPageSize);
-
-  // Snapshot on open, so the dialog keeps its text while closing.
-  const [deleting, setDeleting] = useState<JevListRow | null>(null);
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [pageSize, setPageSize] = useState<PageSize>(() => readPageSize(JEV_PAGE_SIZE_KEY));
 
   const { data, isFetching, isPlaceholderData, isError, error, refetch } = useQuery(
     jevQueries.byMonth({ year, month, page, pageSize }),
   );
-  // Any fetch (first load, new page or month, refresh after a delete) locks the controls.
+  // Any fetch (first load, new page or month, refresh) locks the controls.
   const loading = isFetching;
 
   useEffect(
@@ -90,23 +78,23 @@ export function JevListPage() {
     () => [
       column.accessor("jevDate", {
         header: "Date",
-        size: 140,
+        size: 128,
         cell: (cell) => <span className="tabular-nums">{formatDateOnly(cell.getValue())}</span>,
       }),
       column.accessor("jevNumber", {
         header: "JEV No.",
         size: 180,
-        cell: (cell) => <span className="tabular-nums">{cell.getValue()}</span>,
+        meta: { minSize: 96 },
+        cell: (cell) => <TruncatedText text={cell.getValue()} className="tabular-nums" />,
       }),
       column.accessor("journalType", {
         header: "Journal",
-        size: 100,
+        size: 104,
         cell: (cell) => JOURNAL_SHORT_LABELS[cell.getValue()],
       }),
-      // Not sent by the list API yet; empty until the backend adds it.
       column.accessor("description", {
         header: "Description",
-        size: 320,
+        size: 128,
         meta: { grow: true },
         cell: (cell) => {
           const description = cell.getValue();
@@ -120,28 +108,19 @@ export function JevListPage() {
       column.display({
         id: "actions",
         header: () => <span className="sr-only">Actions</span>,
-        size: 64,
+        size: 96,
         meta: { align: "right" },
         cell: (cell) => (
-          <JevActionsMenu
-            jev={cell.row.original}
-            onDelete={(jev) => {
-              setDeleting(jev);
-              setDeleteOpen(true);
-            }}
-          />
+          <Button variant="ghost" size="sm" className="m-1" asChild>
+            <Link to="/jevs/$jevId" params={{ jevId: cell.row.original.id }}>
+              View
+            </Link>
+          </Button>
         ),
       }),
     ],
     [],
   );
-
-  const queryClient = useQueryClient();
-  const remove = useMutation({
-    mutationFn: ({ id, password }: { id: string; password: string }) =>
-      api.jevs.delete(id, { password }),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: jevQueries.all }),
-  });
 
   const period = month === 0 ? String(year) : `${MONTH_NAMES[month - 1]} ${year}`;
 
@@ -193,7 +172,7 @@ export function JevListPage() {
       {isError && !loading ? (
         <SettingsLoadError error={error} onRetry={() => refetch()} />
       ) : (
-        // While loading, the body is one spinner, so rows and their menus can't be used.
+        // While loading, the body is one spinner, so rows and their actions can't be used.
         <DataGrid
           label="Journal entry vouchers"
           columns={columns}
@@ -208,68 +187,18 @@ export function JevListPage() {
       )}
       {/* Stays in place (disabled) while loading, showing the last page's numbers. */}
       {data && !isError && (
-        <JevListPagination
+        <ListPagination
           result={data}
           pageSize={pageSize}
           disabled={loading}
           onPageChange={goToPage}
           onPageSizeChange={(size) => {
             setPageSize(size);
-            storePageSize(size);
+            storePageSize(JEV_PAGE_SIZE_KEY, size);
             goToPage(1);
           }}
         />
       )}
-
-      <PasswordConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={`Delete JEV ${deleting?.jevNumber ?? ""}`}
-        description="Enter your password to delete this journal entry voucher."
-        warning="This can't be undone. A deleted JEV is left out of the trial balance."
-        confirmLabel="Delete"
-        destructive
-        onConfirm={(password) =>
-          deleting ? remove.mutateAsync({ id: deleting.id, password }) : Promise.resolve()
-        }
-      />
     </div>
-  );
-}
-
-function JevActionsMenu({
-  jev,
-  onDelete,
-}: {
-  jev: JevListRow;
-  onDelete: (jev: JevListRow) => void;
-}) {
-  const navigate = useNavigate();
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`Actions for JEV ${jev.jevNumber}`}
-          className="m-1"
-        >
-          <EllipsisIcon />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          onSelect={() => navigate({ to: "/jevs/$jevId/edit", params: { jevId: jev.id } })}
-        >
-          <PencilIcon />
-          Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem variant="destructive" onSelect={() => onDelete(jev)}>
-          <Trash2Icon />
-          Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

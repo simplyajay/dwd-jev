@@ -1,4 +1,4 @@
-// Shared by the form's editable tables (accounts, supporting documents).
+// Table layouts shared by the JEV form and the read-only view.
 
 /**
  * Accounts table: code, name, debit, credit, remove; external documents reuse it.
@@ -10,6 +10,10 @@ export const ACCOUNT_GRID =
 /** Supporting documents table: number, type, date, remove. Needs ~30rem. */
 export const SUPPORTING_DOCUMENT_GRID =
   "grid grid-cols-[minmax(7rem,1fr)_minmax(10rem,1.5fr)_9.5rem_2.25rem] gap-2";
+
+/** A table's column headings row. */
+export const TABLE_HEADING =
+  "border-table-divider border-b px-1 pb-1 font-medium text-table-header text-xs uppercase tracking-wide";
 
 /** Rows sit flush, so this padding alone sets the space between rows. */
 export const ROW_PADDING_Y = "py-1";
