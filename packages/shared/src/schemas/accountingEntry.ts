@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { EntryTypeSchema } from "../enums.js";
-import {
-  AmountSchema,
-  CreateExternalDocumentEntryInputSchema,
-  ExternalDocumentEntrySchema,
-  toCents,
-} from "./externalDocumentEntry.js";
+import { AmountSchema, toCents } from "./amount.js";
+import { CreateExplanationInputSchema, ExplanationSchema } from "./explanation.js";
 
 export const AccountingEntrySchema = z.object({
   id: z.uuid(),
@@ -15,7 +11,7 @@ export const AccountingEntrySchema = z.object({
   accountName: z.string(),
   entryType: EntryTypeSchema,
   amount: z.coerce.bigint(),
-  externalDocumentEntries: z.array(ExternalDocumentEntrySchema),
+  explanations: z.array(ExplanationSchema),
 });
 export type AccountingEntry = z.infer<typeof AccountingEntrySchema>;
 
@@ -25,10 +21,10 @@ export const CreateAccountingEntryInputSchema = z
     accountName: z.string().nonempty("Please enter account name."),
     entryType: EntryTypeSchema.nullable(),
     amount: AmountSchema,
-    externalDocumentEntries: z.array(CreateExternalDocumentEntryInputSchema).default([]),
+    explanations: z.array(CreateExplanationInputSchema).default([]),
   })
   .superRefine((data, ctx) => {
-    const { entryType, amount, externalDocumentEntries } = data;
+    const { entryType, amount, explanations } = data;
 
     if (entryType === null || amount === undefined) {
       ctx.addIssue({
@@ -48,31 +44,31 @@ export const CreateAccountingEntryInputSchema = z
       return;
     }
 
-    if (externalDocumentEntries.length === 0) return;
+    if (explanations.length === 0) return;
 
-    const hasIncompleteDetails = externalDocumentEntries.some(
-      (ext) => !ext.documentNumber || !ext.documentName,
+    const hasIncompleteDetails = explanations.some(
+      (explanation) => !explanation.reference || !explanation.description,
     );
 
     if (hasIncompleteDetails) {
       ctx.addIssue({
         code: "custom",
-        path: ["externalDocuments"],
-        message: "Enter document details.",
+        path: ["explanations"],
+        message: "Enter the reference and description.",
       });
       return;
     }
 
-    const externalDocumentsTotalCents = externalDocumentEntries.reduce(
-      (sum, ext) => sum + toCents(ext.amount ?? 0),
+    const explanationsTotalCents = explanations.reduce(
+      (sum, explanation) => sum + toCents(explanation.amount ?? 0),
       0,
     );
 
-    if (externalDocumentsTotalCents !== toCents(amount)) {
+    if (explanationsTotalCents !== toCents(amount)) {
       ctx.addIssue({
         code: "custom",
-        path: ["externalDocuments"],
-        message: `External documents must total the account's ${entryType}.`,
+        path: ["explanations"],
+        message: `Explanations must total the account's ${entryType}.`,
       });
     }
   });

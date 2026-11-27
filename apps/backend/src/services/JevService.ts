@@ -37,7 +37,7 @@ const formatJev = ({
   dvDate: toDateOnlyOrNull(jev.dvDate),
   adaDate: toDateOnlyOrNull(jev.adaDate),
   checkDate: toDateOnlyOrNull(jev.checkDate),
-  supportingDocumentEntries: jev.supportingDocumentEntries.map((doc) => ({
+  supportingDocuments: jev.supportingDocuments.map((doc) => ({
     ...doc,
     documentDate: toDateOnly(doc.documentDate),
   })),

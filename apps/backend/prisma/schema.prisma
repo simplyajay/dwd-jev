@@ -145,9 +145,9 @@ model Jev {
   lastUpdatedByUser User  @relation("JevLastUpdatedBy", fields: [lastUpdatedBy], references: [id])
   deletedByUser     User? @relation("JevDeletedBy", fields: [deletedBy], references: [id], onDelete: Restrict)
 
-  accountingEntries         AccountingEntry[]
-  supportingDocumentEntries SupportingDocumentEntry[]
-  revisions                 JevRevision[]
+  accountingEntries   AccountingEntry[]
+  supportingDocuments SupportingDocument[]
+  revisions           JevRevision[]
 
   @@map("journal_entry_voucher")
 }
@@ -176,13 +176,13 @@ model AccountingEntry {
   entryType   EntryType @map("entry_type")
   amount      BigInt
 
-  jev                     Jev                     @relation(fields: [jevId], references: [id], onDelete: Cascade)
-  externalDocumentEntries ExternalDocumentEntry[]
+  jev          Jev           @relation(fields: [jevId], references: [id], onDelete: Cascade)
+  explanations Explanation[]
 
   @@map("accounting_entries")
 }
 
-model SupportingDocumentEntry {
+model SupportingDocument {
   id             String       @id @default(uuid()) @db.Uuid
   jevId          String       @map("jev_id") @db.Uuid
   sortOrder      Int          @map("sort_order")
@@ -193,20 +193,20 @@ model SupportingDocumentEntry {
 
   jev Jev @relation(fields: [jevId], references: [id], onDelete: Cascade)
 
-  @@map("supporting_document_entries")
+  @@map("supporting_documents")
 }
 
-model ExternalDocumentEntry {
+model Explanation {
   id                String    @id @default(uuid()) @db.Uuid
   accountingEntryId String    @map("accounting_entry_id") @db.Uuid
-  documentNumber    String    @map("document_number")
-  documentName      String    @map("document_name")
+  reference         String
+  description       String
   entryType         EntryType @map("entry_type")
   amount            BigInt
 
   accountingEntry AccountingEntry @relation(fields: [accountingEntryId], references: [id], onDelete: Cascade)
 
-  @@map("external_document_entries")
+  @@map("explanations")
 }
 
 // documentType is a String so new types need no enum migration.

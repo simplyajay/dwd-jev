@@ -11,10 +11,10 @@ const JEV_FULL_INCLUDE = {
   createdByUser: { select: USER_REF_WITH_POSITION_SELECT },
   lastUpdatedByUser: { select: USER_REF_WITH_POSITION_SELECT },
   accountingEntries: {
-    include: { externalDocumentEntries: true },
+    include: { explanations: true },
     orderBy: { sortOrder: "asc" },
   },
-  supportingDocumentEntries: {
+  supportingDocuments: {
     orderBy: { sortOrder: "asc" },
   },
 } satisfies Prisma.JevInclude;
@@ -77,13 +77,13 @@ const buildAccountingEntriesCreate = (entries: ValidatedAccountingEntry[]) =>
       accountName: entry.accountName,
       entryType,
       amount: centsFromPesos(amount),
-      // External documents inherit the parent's entryType.
-      externalDocumentEntries: {
-        create: entry.externalDocumentEntries.map((doc) => ({
-          documentNumber: doc.documentNumber,
-          documentName: doc.documentName,
+      // Explanations inherit the parent's entryType.
+      explanations: {
+        create: entry.explanations.map((explanation) => ({
+          reference: explanation.reference,
+          description: explanation.description,
           entryType,
-          amount: centsFromPesos(doc.amount!),
+          amount: centsFromPesos(explanation.amount!),
         })),
       },
     };
@@ -143,7 +143,7 @@ export class PrismaJevRepository implements IJevRepository {
           accountingEntries: {
             create: buildAccountingEntriesCreate(data.accountingEntries),
           },
-          supportingDocumentEntries: {
+          supportingDocuments: {
             create: buildSupportingDocumentsCreate(data.supportingDocuments),
           },
         },
@@ -216,9 +216,9 @@ export class PrismaJevRepository implements IJevRepository {
     tx: Tx,
   ): Promise<JevWithRelations> {
     return withUniqueConflict(JEV_UNIQUE_FIELDS, async () => {
-      // Cascades to externalDocumentEntries via the FK's onDelete: Cascade.
+      // Cascades to explanations via the FK's onDelete: Cascade.
       await tx.accountingEntry.deleteMany({ where: { jevId: id } });
-      await tx.supportingDocumentEntry.deleteMany({ where: { jevId: id } });
+      await tx.supportingDocument.deleteMany({ where: { jevId: id } });
 
       return tx.jev.update({
         where: { id },
@@ -228,7 +228,7 @@ export class PrismaJevRepository implements IJevRepository {
           accountingEntries: {
             create: buildAccountingEntriesCreate(data.accountingEntries),
           },
-          supportingDocumentEntries: {
+          supportingDocuments: {
             create: buildSupportingDocumentsCreate(data.supportingDocuments),
           },
         },

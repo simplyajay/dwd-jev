@@ -1,7 +1,7 @@
 import type { AccountingEntry } from "./schemas/accountingEntry.js";
-import type { ExternalDocumentEntry } from "./schemas/externalDocumentEntry.js";
+import type { Explanation } from "./schemas/explanation.js";
 import type { JevSnapshot } from "./schemas/jevRevision.js";
-import type { SupportingDocumentEntry } from "./schemas/supportingDocumentEntry.js";
+import type { SupportingDocument } from "./schemas/supportingDocument.js";
 
 export interface JevDiff {
   changed: string[]; // after-indices
@@ -32,18 +32,18 @@ const ACCOUNTING_ENTRY_FIELDS = [
 ] as const satisfies readonly (keyof AccountingEntry)[];
 
 // entryType is inherited from the parent accounting entry.
-const EXTERNAL_DOCUMENT_FIELDS = [
-  "documentNumber",
-  "documentName",
+const EXPLANATION_FIELDS = [
+  "reference",
+  "description",
   "amount",
-] as const satisfies readonly (keyof ExternalDocumentEntry)[];
+] as const satisfies readonly (keyof Explanation)[];
 
 // documentName is derived from documentCode.
 const SUPPORTING_DOCUMENT_FIELDS = [
   "documentCode",
   "documentNumber",
   "documentDate",
-] as const satisfies readonly (keyof SupportingDocumentEntry)[];
+] as const satisfies readonly (keyof SupportingDocument)[];
 
 const diffFields = <T>(
   before: T,
@@ -114,43 +114,43 @@ export function diffJev(before: JevSnapshot, after: JevSnapshot): JevDiff {
     const prefix = `accountingEntries[${pair.afterIndex}].`;
     diffFields(pair.before, pair.after, ACCOUNTING_ENTRY_FIELDS, prefix, changed);
 
-    const externalMatch = matchByKey(
-      pair.before.externalDocumentEntries ?? [],
-      pair.after.externalDocumentEntries ?? [],
-      (doc: ExternalDocumentEntry) => doc.documentNumber,
+    const explanationMatch = matchByKey(
+      pair.before.explanations ?? [],
+      pair.after.explanations ?? [],
+      (explanation: Explanation) => explanation.reference,
     );
 
-    for (const { index } of externalMatch.added) {
-      added.push(`${prefix}externalDocumentEntries[${index}]`);
+    for (const { index } of explanationMatch.added) {
+      added.push(`${prefix}explanations[${index}]`);
     }
-    for (const { index } of externalMatch.removed) {
-      removed.push(`${prefix}externalDocumentEntries[${index}]`);
+    for (const { index } of explanationMatch.removed) {
+      removed.push(`${prefix}explanations[${index}]`);
     }
-    for (const extPair of externalMatch.matched) {
+    for (const explanationPair of explanationMatch.matched) {
       diffFields(
-        extPair.before,
-        extPair.after,
-        EXTERNAL_DOCUMENT_FIELDS,
-        `${prefix}externalDocumentEntries[${extPair.afterIndex}].`,
+        explanationPair.before,
+        explanationPair.after,
+        EXPLANATION_FIELDS,
+        `${prefix}explanations[${explanationPair.afterIndex}].`,
         changed,
       );
     }
   }
 
   const supportingMatch = matchByKey(
-    before.supportingDocumentEntries ?? [],
-    after.supportingDocumentEntries ?? [],
-    (doc: SupportingDocumentEntry) => `${doc.documentCode}::${doc.documentNumber}`,
+    before.supportingDocuments ?? [],
+    after.supportingDocuments ?? [],
+    (doc: SupportingDocument) => `${doc.documentCode}::${doc.documentNumber}`,
   );
 
-  for (const { index } of supportingMatch.added) added.push(`supportingDocumentEntries[${index}]`);
-  for (const { index } of supportingMatch.removed) removed.push(`supportingDocumentEntries[${index}]`);
+  for (const { index } of supportingMatch.added) added.push(`supportingDocuments[${index}]`);
+  for (const { index } of supportingMatch.removed) removed.push(`supportingDocuments[${index}]`);
   for (const pair of supportingMatch.matched) {
     diffFields(
       pair.before,
       pair.after,
       SUPPORTING_DOCUMENT_FIELDS,
-      `supportingDocumentEntries[${pair.afterIndex}].`,
+      `supportingDocuments[${pair.afterIndex}].`,
       changed,
     );
   }

@@ -5,11 +5,11 @@ import {
   AccountingEntrySchema,
   CreateAccountingEntryInputSchema,
 } from "./accountingEntry.js";
-import { toCents } from "./externalDocumentEntry.js";
+import { toCents } from "./amount.js";
 import {
-  CreateSupportingDocumentEntryInputSchema,
-  SupportingDocumentEntrySchema,
-} from "./supportingDocumentEntry.js";
+  CreateSupportingDocumentInputSchema,
+  SupportingDocumentSchema,
+} from "./supportingDocument.js";
 import { ConfirmPasswordInputSchema, UserRefWithPositionSchema } from "./user.js";
 
 export const JevByMonthInputSchema = PaginationInputSchema.extend({
@@ -64,7 +64,7 @@ export const JevSchema = z.object({
   deletedAt: z.coerce.date().nullable(),
   deletedBy: z.uuid().nullable(),
   accountingEntries: z.array(AccountingEntrySchema).optional(),
-  supportingDocumentEntries: z.array(SupportingDocumentEntrySchema).optional(),
+  supportingDocuments: z.array(SupportingDocumentSchema).optional(),
 });
 export type Jev = z.infer<typeof JevSchema>;
 
@@ -83,23 +83,23 @@ const MIN_ACCOUNT_ROWS = 2;
 const dateOnlyInput = (message: string) =>
   z.iso.date(message).transform((value) => new Date(value));
 
-const CkdjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
+const CkdjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
   documentCode: z.enum(["bur", "po", "inv", "ar", "or"], { error: "Select Document" }),
 });
 
-const CdjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
+const CdjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
   documentCode: z.enum(["bur"], { error: "Select Document" }),
 });
 
-const CrjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
+const CrjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
   documentCode: z.enum(["rcd"], { error: "Select Document" }),
 });
 
-const MsijSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
+const MsijSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
   documentCode: z.enum(["ris"], { error: "Select Document" }),
 });
 
-const GjSupportingDocumentSchema = CreateSupportingDocumentEntryInputSchema.extend({
+const GjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
   documentCode: z.enum(["lr"], { error: "Select Document" }),
 });
 
