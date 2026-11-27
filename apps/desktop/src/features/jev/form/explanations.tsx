@@ -6,16 +6,16 @@ import { dismissOn } from "@/components/form/dismiss-on";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { type AccountRow, type JevFormValues, newExternalDocumentRow } from "./jev-form-values";
+import { type AccountRow, type JevFormValues, newExplanationRow } from "./jev-form-values";
 import { ACCOUNT_GRID, SHOW_ON_SUB_ROW_HOVER, SUB_ROW } from "./row-styles";
 
 const SIDES: readonly EntryType[] = ["debit", "credit"];
 const SIDE_LABELS: Record<EntryType, string> = { debit: "Debit", credit: "Credit" };
 
-// Smaller than the account's own fields, so documents read as detail.
+// Smaller than the account's own fields, so explanations read as detail.
 const SMALL_FIELD = "h-8 md:text-[0.8125rem]";
 
-interface ExternalDocumentsProps {
+interface ExplanationsProps {
   form: UseFormReturn<JevFormValues>;
   /** The account's row index. */
   index: number;
@@ -26,8 +26,8 @@ interface ExternalDocumentsProps {
   onDismissErrors: () => void;
 }
 
-/** An account's external documents and the Add link. */
-export function ExternalDocuments({
+/** An account's explanations and the Add link. */
+export function Explanations({
   form,
   index,
   row,
@@ -35,34 +35,38 @@ export function ExternalDocuments({
   error,
   canAdd,
   onDismissErrors,
-}: ExternalDocumentsProps) {
+}: ExplanationsProps) {
   const path = `accountingEntries.${index}` as const;
-  const documents = useFieldArray({
+  const explanations = useFieldArray({
     control: form.control,
-    name: `${path}.externalDocumentEntries`,
+    name: `${path}.explanations`,
   });
   const rowNumber = index + 1;
 
-  // Documents take the row's side; before it has one, the column typed in sets it.
-  const commitAmount = (documentIndex: number, column: EntryType, amount: number | undefined) => {
+  // Explanations take the row's side; before it has one, the column typed in sets it.
+  const commitAmount = (
+    explanationIndex: number,
+    column: EntryType,
+    amount: number | undefined,
+  ) => {
     const dirty = { shouldDirty: true };
-    form.setValue(`${path}.externalDocumentEntries.${documentIndex}.amount`, amount, dirty);
+    form.setValue(`${path}.explanations.${explanationIndex}.amount`, amount, dirty);
     if (amount !== undefined && side === null) form.setValue(`${path}.entryType`, column, dirty);
   };
 
   return (
     <>
-      {documents.fields.length > 0 && (
+      {explanations.fields.length > 0 && (
         // Starts at the account name and is dashed, so it isn't mistaken for a row divider.
         <div aria-hidden className={cn(ACCOUNT_GRID, "pt-1")}>
           <div className="col-span-4 col-start-2 border-table-divider border-t border-dashed" />
         </div>
       )}
-      {documents.fields.map((document, documentIndex) => {
-        const documentPath = `${path}.externalDocumentEntries.${documentIndex}` as const;
-        const label = `external document ${documentIndex + 1}, row ${rowNumber}`;
+      {explanations.fields.map((explanation, explanationIndex) => {
+        const explanationPath = `${path}.explanations.${explanationIndex}` as const;
+        const label = `explanation ${explanationIndex + 1}, row ${rowNumber}`;
         return (
-          <div key={document.id} className={cn(ACCOUNT_GRID, SUB_ROW)}>
+          <div key={explanation.id} className={cn(ACCOUNT_GRID, SUB_ROW)}>
             <span />
             {/* The arrow starts where the account name field does. */}
             <div className="flex items-start gap-2">
@@ -74,19 +78,19 @@ export function ExternalDocuments({
                 <Input
                   variant="table"
                   className={SMALL_FIELD}
-                  placeholder="Document no."
-                  aria-label={`Document no., ${label}`}
+                  placeholder="Reference"
+                  aria-label={`Reference, ${label}`}
                   aria-invalid={!!error}
-                  {...form.register(`${documentPath}.documentNumber`)}
+                  {...form.register(`${explanationPath}.reference`)}
                   {...dismissOn(onDismissErrors)}
                 />
                 <Input
                   variant="table"
                   className={SMALL_FIELD}
-                  placeholder="Document name"
-                  aria-label={`Document name, ${label}`}
+                  placeholder="Description"
+                  aria-label={`Description, ${label}`}
                   aria-invalid={!!error}
-                  {...form.register(`${documentPath}.documentName`)}
+                  {...form.register(`${explanationPath}.description`)}
                   {...dismissOn(onDismissErrors)}
                 />
               </div>
@@ -98,10 +102,10 @@ export function ExternalDocuments({
                   key={column}
                   className={SMALL_FIELD}
                   aria-label={`${SIDE_LABELS[column]}, ${label}`}
-                  value={row?.externalDocumentEntries[documentIndex]?.amount}
+                  value={row?.explanations[explanationIndex]?.amount}
                   invalid={!!error}
                   onFocus={onDismissErrors}
-                  onCommit={(amount) => commitAmount(documentIndex, column, amount)}
+                  onCommit={(amount) => commitAmount(explanationIndex, column, amount)}
                 />
               ) : (
                 <span key={column} />
@@ -117,7 +121,7 @@ export function ExternalDocuments({
                 "place-self-center text-muted-foreground hover:text-destructive",
               )}
               onClick={() => {
-                documents.remove(documentIndex);
+                explanations.remove(explanationIndex);
                 onDismissErrors();
               }}
             >
@@ -141,10 +145,10 @@ export function ExternalDocuments({
                 variant="link"
                 size="xs"
                 className="px-0"
-                onClick={() => documents.append(newExternalDocumentRow())}
+                onClick={() => explanations.append(newExplanationRow())}
               >
                 <PlusIcon />
-                {documents.fields.length > 0 ? "Add another document" : "Add external document"}
+                {explanations.fields.length > 0 ? "Add another explanation" : "Add explanation"}
               </Button>
             )}
           </div>

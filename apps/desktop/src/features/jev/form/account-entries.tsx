@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatPesos } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import { ExternalDocuments } from "./external-documents";
+import { Explanations } from "./explanations";
 import { type JevFormValues, MIN_ACCOUNT_ROWS, newAccountRow } from "./jev-form-values";
 import {
   EDITABLE_ROW,
@@ -32,7 +32,7 @@ const arrayMessage = (error: ArrayError) => error?.root?.message ?? error?.messa
 // Where the resolver puts errors about the whole list (balance, minimum rows).
 const LIST_ERROR = "accountingEntries.root" as FieldPath<JevFormValues>;
 
-/** Account rows with their external documents, and the debit/credit totals. */
+/** Account rows with their explanations, and the debit/credit totals. */
 export function AccountEntries({ form }: { form: UseFormReturn<JevFormValues> }) {
   const { control } = form;
   const { fields, append, remove } = useFieldArray({ control, name: "accountingEntries" });
@@ -114,17 +114,13 @@ function AccountEntryRow({ form, index, onRemove }: AccountEntryRowProps) {
 
   const side = row?.entryType ?? null;
   const rowErrors = errors.accountingEntries?.[index];
-  // The shared schema reports these at "externalDocuments", not the field's own name.
-  const documentsError =
-    (rowErrors as Record<string, { message?: string }> | undefined)?.externalDocuments?.message ??
-    arrayMessage(rowErrors?.externalDocumentEntries as ArrayError);
+  const explanationsError = arrayMessage(rowErrors?.explanations as ArrayError);
   const rowNumber = index + 1;
   const dirty = { shouldDirty: true };
 
   const clearRowErrors = () =>
     clearErrors([`${path}.accountCode`, `${path}.accountName`, `${path}.amount`]);
-  const clearDocumentErrors = () =>
-    clearErrors([`${path}.externalDocuments` as FieldPath<JevFormValues>, LIST_ERROR]);
+  const clearExplanationErrors = () => clearErrors([`${path}.explanations`, LIST_ERROR]);
 
   // Typing in a column puts the row on that side; clearing it keeps the side.
   const commitAmount = (column: EntryType, amount: number | undefined) => {
@@ -136,10 +132,10 @@ function AccountEntryRow({ form, index, onRemove }: AccountEntryRowProps) {
     setValue(`${path}.amount`, amount, dirty);
   };
 
-  const canAddDocuments = !!row?.accountCode && !!row?.accountName;
+  const canAddExplanations = !!row?.accountCode && !!row?.accountName;
 
   return (
-    // One row per entry: the account, its errors, its documents and the Add link.
+    // One row per entry: the account, its errors, its explanations and the Add link.
     <div className={EDITABLE_ROW}>
       {/* Any interaction with the account's fields clears its errors. */}
       <div {...dismissOn(clearRowErrors)}>
@@ -194,14 +190,14 @@ function AccountEntryRow({ form, index, onRemove }: AccountEntryRowProps) {
         )}
       </div>
 
-      <ExternalDocuments
+      <Explanations
         form={form}
         index={index}
         row={row}
         side={side}
-        error={documentsError}
-        canAdd={canAddDocuments}
-        onDismissErrors={clearDocumentErrors}
+        error={explanationsError}
+        canAdd={canAddExplanations}
+        onDismissErrors={clearExplanationErrors}
       />
     </div>
   );

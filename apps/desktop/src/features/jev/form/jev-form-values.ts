@@ -49,9 +49,9 @@ export const ALLOWED_DOCUMENT_CODES: Record<JournalType, readonly DocumentCode[]
   gj: ["lr"],
 };
 
-export interface ExternalDocumentRow {
-  documentNumber: string;
-  documentName: string;
+export interface ExplanationRow {
+  reference: string;
+  description: string;
   amount: number | undefined;
 }
 
@@ -61,7 +61,7 @@ export interface AccountRow {
   /** Null until an amount is typed in the Debit or Credit column. */
   entryType: EntryType | null;
   amount: number | undefined;
-  externalDocumentEntries: ExternalDocumentRow[];
+  explanations: ExplanationRow[];
 }
 
 export interface SupportingDocumentRow {
@@ -84,12 +84,12 @@ export const newAccountRow = (): AccountRow => ({
   accountName: "",
   entryType: null,
   amount: undefined,
-  externalDocumentEntries: [],
+  explanations: [],
 });
 
-export const newExternalDocumentRow = (): ExternalDocumentRow => ({
-  documentNumber: "",
-  documentName: "",
+export const newExplanationRow = (): ExplanationRow => ({
+  reference: "",
+  description: "",
   amount: undefined,
 });
 
@@ -140,13 +140,13 @@ export function toJevFormValues(jev: Jev): JevFormValues {
       accountName: entry.accountName,
       entryType: entry.entryType,
       amount: centsToPesos(entry.amount),
-      externalDocumentEntries: entry.externalDocumentEntries.map((document) => ({
-        documentNumber: document.documentNumber,
-        documentName: document.documentName,
-        amount: centsToPesos(document.amount),
+      explanations: entry.explanations.map((explanation) => ({
+        reference: explanation.reference,
+        description: explanation.description,
+        amount: centsToPesos(explanation.amount),
       })),
     })),
-    supportingDocuments: (jev.supportingDocumentEntries ?? []).map((document) => ({
+    supportingDocuments: (jev.supportingDocuments ?? []).map((document) => ({
       documentCode: document.documentCode,
       documentNumber: document.documentNumber,
       documentDate: document.documentDate,

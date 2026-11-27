@@ -9,7 +9,7 @@ export const CLAUDE = {
 
 const JEV_ID = "00000000-0000-4000-8000-0000000000c1";
 
-/** A saved check disbursement JEV: one debit with an invoice, one credit, one PO. */
+/** A saved check disbursement JEV: one debit with an explanation, one credit, one PO. */
 export const SAVED_JEV: Jev = {
   id: JEV_ID,
   journalType: "ckdj",
@@ -38,12 +38,12 @@ export const SAVED_JEV: Jev = {
       accountName: "Office Supplies",
       entryType: "debit",
       amount: 150000n,
-      externalDocumentEntries: [
+      explanations: [
         {
           id: "00000000-0000-4000-8000-0000000000e1",
           accountingEntryId: "00000000-0000-4000-8000-0000000000d1",
-          documentNumber: "INV-7",
-          documentName: "Supplier invoice",
+          reference: "INV-7",
+          description: "Supplier invoice",
           entryType: "debit",
           amount: 150000n,
         },
@@ -57,10 +57,10 @@ export const SAVED_JEV: Jev = {
       accountName: "Cash in Bank",
       entryType: "credit",
       amount: 150000n,
-      externalDocumentEntries: [],
+      explanations: [],
     },
   ],
-  supportingDocumentEntries: [
+  supportingDocuments: [
     {
       id: "00000000-0000-4000-8000-0000000000f1",
       jevId: JEV_ID,

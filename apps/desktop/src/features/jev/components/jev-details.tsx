@@ -231,16 +231,16 @@ function AccountRow({
         ))}
       </div>
 
-      {entry.externalDocumentEntries.map((document, index) => {
-        const documentPath = `${path}.externalDocumentEntries[${index}]`;
-        const documentTone = marks.rowTone(documentPath);
+      {entry.explanations.map((explanation, index) => {
+        const explanationPath = `${path}.explanations[${index}]`;
+        const explanationTone = marks.rowTone(explanationPath);
         return (
           <div
-            key={document.id}
+            key={explanation.id}
             className={cn(
               ACCOUNT_GRID,
               "mt-1 py-0.5 text-[0.8125rem] text-muted-foreground",
-              documentTone && ROW_TONES[documentTone],
+              explanationTone && ROW_TONES[explanationTone],
             )}
           >
             <span />
@@ -248,14 +248,14 @@ function AccountRow({
               <CornerDownRightIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
               <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
                 <span className="min-w-0 wrap-break-word tabular-nums">
-                  <Marked changed={marks.changed(`${documentPath}.documentNumber`)}>
-                    {document.documentNumber}
+                  <Marked changed={marks.changed(`${explanationPath}.reference`)}>
+                    {explanation.reference}
                   </Marked>
-                  <RowToneLabel tone={documentTone} />
+                  <RowToneLabel tone={explanationTone} />
                 </span>
                 <span className="min-w-0 wrap-break-word">
-                  <Marked changed={marks.changed(`${documentPath}.documentName`)}>
-                    {document.documentName}
+                  <Marked changed={marks.changed(`${explanationPath}.description`)}>
+                    {explanation.description}
                   </Marked>
                 </span>
               </div>
@@ -263,8 +263,8 @@ function AccountRow({
             {SIDES.map((side) => (
               <span key={side} className="pr-2.5 text-right tabular-nums">
                 {side === entry.entryType && (
-                  <Marked changed={marks.changed(`${documentPath}.amount`)}>
-                    {formatCents(document.amount)}
+                  <Marked changed={marks.changed(`${explanationPath}.amount`)}>
+                    {formatCents(explanation.amount)}
                   </Marked>
                 )}
               </span>
@@ -277,7 +277,7 @@ function AccountRow({
 }
 
 function SupportingDocumentsSection({ jev, marks }: { jev: JevSnapshot; marks: Marks }) {
-  const documents = jev.supportingDocumentEntries ?? [];
+  const documents = jev.supportingDocuments ?? [];
 
   return (
     <JevSection title="Supporting documents">
@@ -292,7 +292,7 @@ function SupportingDocumentsSection({ jev, marks }: { jev: JevSnapshot; marks: M
           </div>
           <div className={ROW_DIVIDERS}>
             {documents.map((document, index) => {
-              const path = `supportingDocumentEntries[${index}]`;
+              const path = `supportingDocuments[${index}]`;
               const tone = marks.rowTone(path);
               return (
                 <div

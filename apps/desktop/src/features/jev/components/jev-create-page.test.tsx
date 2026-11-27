@@ -189,14 +189,14 @@ describe("JevCreatePage", () => {
           accountName: "Cash",
           entryType: "debit",
           amount: 1234.5,
-          externalDocumentEntries: [],
+          explanations: [],
         },
         {
           accountCode: "4-01",
           accountName: "Income",
           entryType: "credit",
           amount: 1234.5,
-          externalDocumentEntries: [],
+          explanations: [],
         },
       ],
       supportingDocuments: [],
@@ -238,29 +238,71 @@ describe("JevCreatePage", () => {
     expect(api.jevs.create).not.toHaveBeenCalled();
   });
 
-  it("shows when external documents don't add up to their account", async () => {
+  it("shows when explanations don't add up to their account", async () => {
     const user = userEvent.setup();
     renderCreatePage();
     await fillBalancedGeneralJournal(user);
-    await user.click(
-      screen.getAllByRole("button", { name: "Add external document" })[0] as HTMLElement,
-    );
+    await user.click(screen.getAllByRole("button", { name: "Add explanation" })[0] as HTMLElement);
     await user.type(
-      screen.getByRole("textbox", { name: "Document no., external document 1, row 1" }),
+      screen.getByRole("textbox", { name: "Reference, explanation 1, row 1" }),
       "PO-1",
     );
     await user.type(
-      screen.getByRole("textbox", { name: "Document name, external document 1, row 1" }),
+      screen.getByRole("textbox", { name: "Description, explanation 1, row 1" }),
       "Supplier",
     );
-    await typeAmount(user, "Debit, external document 1, row 1", "1000");
+    await typeAmount(user, "Debit, explanation 1, row 1", "1000");
 
     await user.click(screen.getByRole("button", { name: "Create JEV" }));
 
     expect(
-      await screen.findByText("External documents must total the account's debit."),
+      await screen.findByText("Explanations must total the account's debit."),
     ).toBeInTheDocument();
     expect(api.jevs.create).not.toHaveBeenCalled();
+  });
+
+  it("asks for an explanation's reference and description", async () => {
+    const user = userEvent.setup();
+    renderCreatePage();
+    await fillBalancedGeneralJournal(user);
+    await user.click(screen.getAllByRole("button", { name: "Add explanation" })[0] as HTMLElement);
+    await typeAmount(user, "Debit, explanation 1, row 1", "1234.5");
+
+    await user.click(screen.getByRole("button", { name: "Create JEV" }));
+
+    expect(await screen.findByText("Enter the reference and description.")).toBeInTheDocument();
+    expect(api.jevs.create).not.toHaveBeenCalled();
+  });
+
+  it("sends explanations and supporting documents, without a password", async () => {
+    const user = userEvent.setup();
+    renderCreatePage();
+    await fillBalancedGeneralJournal(user);
+    await user.click(screen.getAllByRole("button", { name: "Add explanation" })[0] as HTMLElement);
+    await user.type(
+      screen.getByRole("textbox", { name: "Reference, explanation 1, row 1" }),
+      "OR-9",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Description, explanation 1, row 1" }),
+      "Claude test receipt",
+    );
+    await typeAmount(user, "Debit, explanation 1, row 1", "1234.5");
+    await user.click(screen.getByRole("button", { name: "Add document" }));
+    await user.type(screen.getByRole("textbox", { name: "Document no., document 1" }), "LR-3");
+    await pickDate(user, "Date, document 1");
+
+    await user.click(screen.getByRole("button", { name: "Create JEV" }));
+
+    await screen.findByRole("dialog", { name: "JEV created" });
+    const body = vi.mocked(api.jevs.create).mock.lastCall?.[0];
+    expect(body?.accountingEntries[0]?.explanations).toEqual([
+      { reference: "OR-9", description: "Claude test receipt", amount: 1234.5 },
+    ]);
+    expect(body?.supportingDocuments).toEqual([
+      { documentCode: "lr", documentNumber: "LR-3", documentDate: PICKED_DATE },
+    ]);
+    expect(body).not.toHaveProperty("password");
   });
 
   it("starts a supporting document on the journal's first allowed type", async () => {

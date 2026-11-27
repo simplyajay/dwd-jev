@@ -1,7 +1,7 @@
 // Table layouts shared by the JEV form and the read-only view.
 
 /**
- * Accounts table: code, name, debit, credit, remove; external documents reuse it.
+ * Accounts table: code, name, debit, credit, remove; explanations reuse it.
  * Needs ~35rem, which the smallest window has up to 125% Windows text size.
  */
 export const ACCOUNT_GRID =
@@ -31,7 +31,7 @@ export const EDITABLE_ROW = `group/row rounded-md px-1 ${ROW_PADDING_Y} transiti
 /** A row's remove button: shown on hover, or focus so the keyboard reaches it. */
 export const SHOW_ON_ROW_HOVER = `opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-within/row:opacity-100 ${IF_DISABLED_HIDDEN}`;
 
-/** An external document inside an account row: row spacing, no highlight. */
+/** An explanation inside an account row: row spacing, no highlight. */
 export const SUB_ROW = `group/sub-row ${ROW_PADDING_Y}`;
 
 /** A sub-row's remove button, like SHOW_ON_ROW_HOVER. */

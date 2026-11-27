@@ -16,8 +16,8 @@ const AFTER = toSnapshot(SAVED_JEV);
 const BEFORE = {
   ...AFTER,
   payeeName: "Claude Old Supplier",
-  supportingDocumentEntries: [
-    ...(AFTER.supportingDocumentEntries ?? []),
+  supportingDocuments: [
+    ...(AFTER.supportingDocuments ?? []),
     {
       id: "00000000-0000-4000-8000-0000000000f2",
       jevId: SAVED_JEV.id,
@@ -75,6 +75,29 @@ describe("AuditLogDetailPage", () => {
     expect(shownValue("DV No.")).toBe("DV-001");
     expect(screen.queryByText("OR-5")).not.toBeInTheDocument();
     expect(screen.getByText("Added row")).toBeVisible();
+  });
+
+  it("marks a changed explanation, matched by its reference", async () => {
+    const [debit, credit] = AFTER.accountingEntries ?? [];
+    const [invoice] = debit?.explanations ?? [];
+    if (!debit || !credit || !invoice) throw new Error("fixture changed");
+    vi.mocked(api.jevs.getRevision).mockResolvedValue(
+      revision({
+        beforeData: {
+          ...AFTER,
+          accountingEntries: [
+            { ...debit, explanations: [{ ...invoice, description: "Claude old invoice" }] },
+            credit,
+          ],
+        },
+      }),
+    );
+    renderDetail("update");
+
+    expect((await screen.findByText("Supplier invoice")).parentElement).toHaveTextContent(
+      "Supplier invoice (changed)",
+    );
+    expect(screen.getByText("INV-7").textContent).toBe("INV-7");
   });
 
   it("switches to the old version, with removed rows marked", async () => {
