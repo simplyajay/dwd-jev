@@ -152,8 +152,16 @@ export class JevService {
     return formatJevRevision(revision);
   }
 
-  // The row lock serializes concurrent updates and deletes of the same JEV.
-  updateJev(id: string, input: CreateJevInput, updatedBy: string): Promise<Jev> {
+  // The row lock serializes concurrent updates and deletes of the same JEV. The
+  // password is checked before taking the lock, so bcrypt doesn't hold it.
+  async updateJev(
+    id: string,
+    input: CreateJevInput,
+    updatedBy: string,
+    password: string,
+  ): Promise<Jev> {
+    await this.userService.confirmPassword(updatedBy, password);
+
     return inTransaction(async (tx) => {
       const locked = await this.jevRepository.lockActive(id, tx);
       const before = locked

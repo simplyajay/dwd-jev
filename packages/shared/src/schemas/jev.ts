@@ -10,7 +10,7 @@ import {
   CreateSupportingDocumentEntryInputSchema,
   SupportingDocumentEntrySchema,
 } from "./supportingDocumentEntry.js";
-import { UserRefWithPositionSchema } from "./user.js";
+import { ConfirmPasswordInputSchema, UserRefWithPositionSchema } from "./user.js";
 
 export const JevByMonthInputSchema = PaginationInputSchema.extend({
   year: z.coerce.number().int(),
@@ -174,3 +174,7 @@ export const CreateJevInputSchema = z
     }
   });
 export type CreateJevInput = z.infer<typeof CreateJevInputSchema>;
+
+// The full JEV plus the user's own password.
+export const UpdateJevInputSchema = CreateJevInputSchema.and(ConfirmPasswordInputSchema);
+export type UpdateJevInput = z.infer<typeof UpdateJevInputSchema>;

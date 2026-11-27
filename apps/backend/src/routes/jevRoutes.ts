@@ -5,6 +5,7 @@ import {
   JevByDateRangeInputSchema,
   JevByIdQuerySchema,
   JevByMonthInputSchema,
+  UpdateJevInputSchema,
 } from "@dwd-jev/shared";
 import {
   createJev,
@@ -24,7 +25,14 @@ import {
   validateQuery,
 } from "../middleware/validate.js";
 
-// Per user, since delete takes a password.
+// Per user, since update and delete take a password.
+const jevUpdateRateLimit = rateLimit({
+  windowSeconds: 60,
+  max: 20,
+  keyPrefix: "jev-update",
+  keyBy: (req) => req.user?.sub,
+});
+
 const jevDeleteRateLimit = rateLimit({
   windowSeconds: 60,
   max: 10,
@@ -53,8 +61,9 @@ jevRouter.get(
 );
 jevRouter.put(
   "/:id",
+  jevUpdateRateLimit,
   validateParams(IdParamSchema),
-  validateBody(CreateJevInputSchema),
+  validateBody(UpdateJevInputSchema),
   updateJev,
 );
 jevRouter.delete(

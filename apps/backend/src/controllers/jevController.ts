@@ -5,6 +5,7 @@ import type {
   JevByDateRangeInput,
   JevByIdQuery,
   JevByMonthInput,
+  UpdateJevInput,
 } from "@dwd-jev/shared";
 import { jevService } from "../container.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -27,9 +28,10 @@ export const getJevRevision = asyncHandler<Request<{ id: string }>>(async (req, 
   res.success(revision, 200);
 });
 
-export const updateJev = asyncHandler<Request<{ id: string }, any, CreateJevInput>>(
+export const updateJev = asyncHandler<Request<{ id: string }, any, UpdateJevInput>>(
   async (req, res) => {
-    const jev = await jevService.updateJev(req.params.id, req.body, req.user!.sub);
+    const { password, ...input } = req.body;
+    const jev = await jevService.updateJev(req.params.id, input, req.user!.sub, password);
     res.success(jev, 200);
   },
 );
