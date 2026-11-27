@@ -1,0 +1,63 @@
+import { Outlet } from "@tanstack/react-router";
+import { useState } from "react";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { useAuth } from "@/features/auth/auth-context";
+import { SessionEndedDialog } from "@/features/auth/components/session-ended-dialog";
+import { SettingsDialog } from "@/features/settings/components/settings-dialog";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { AppHeader } from "./app-header";
+import { AppSidebar } from "./app-sidebar";
+
+const SIDEBAR_STORAGE_KEY = "jev.sidebar-open";
+
+// Narrower windows keep the sidebar collapsed so the JEV accounts table fits. In em, so it
+// scales with Windows text size (1076px at 100%).
+const SIDEBAR_EXPAND_MIN_WIDTH_EM = 67.25;
+
+function readSidebarOpen(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_STORAGE_KEY) !== "false";
+  } catch {
+    return true;
+  }
+}
+
+/** Container for every signed-in page: sidebar, header, scrolling content. */
+export function AppLayout() {
+  const { state } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(readSidebarOpen);
+  const canExpandSidebar = useMediaQuery(`(min-width: ${SIDEBAR_EXPAND_MIN_WIDTH_EM}em)`);
+
+  const onSidebarOpenChange = (open: boolean) => {
+    // Ignored while narrow (incl. Ctrl+B), so the saved choice returns once the window widens.
+    if (!canExpandSidebar) return;
+    setSidebarOpen(open);
+    try {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(open));
+    } catch {
+      // Not persisted; the sidebar still toggles for this session.
+    }
+  };
+
+  // Renders once more on sign-out, before the route guard redirects.
+  if (state.status !== "signed-in") return null;
+
+  return (
+    <SidebarProvider
+      open={sidebarOpen && canExpandSidebar}
+      onOpenChange={onSidebarOpenChange}
+      className="h-svh"
+    >
+      <AppSidebar canExpand={canExpandSidebar} />
+      {/* min-w-0: wide content scrolls inside instead of stretching the page. */}
+      <SidebarInset className="min-w-0 overflow-hidden">
+        <AppHeader />
+        <div className="min-h-0 flex-1 overflow-auto p-6">
+          <Outlet />
+        </div>
+      </SidebarInset>
+      <SettingsDialog />
+      <SessionEndedDialog />
+    </SidebarProvider>
+  );
+}

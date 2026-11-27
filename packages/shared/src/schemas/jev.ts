@@ -1,0 +1,180 @@
+import { z } from "zod";
+import { JournalTypeSchema } from "../enums.js";
+import { PaginationInputSchema } from "../pagination.js";
+import {
+  AccountingEntrySchema,
+  CreateAccountingEntryInputSchema,
+} from "./accountingEntry.js";
+import { toCents } from "./amount.js";
+import {
+  CreateSupportingDocumentInputSchema,
+  SupportingDocumentSchema,
+} from "./supportingDocument.js";
+import { ConfirmPasswordInputSchema, UserRefWithPositionSchema } from "./user.js";
+
+export const JevByMonthInputSchema = PaginationInputSchema.extend({
+  year: z.coerce.number().int(),
+  // 1-indexed month; 0 means every month of the given year.
+  month: z.coerce.number().int().min(0).max(12),
+});
+
+export const JevByDateRangeInputSchema = PaginationInputSchema.extend({
+  // Plain calendar date, e.g. "2026-12-30".
+  startDate: z.iso.date(),
+  endDate: z.iso.date(),
+  searchKeyword: z.string().trim().min(1).optional(),
+});
+
+export type JevByMonthInput = z.infer<typeof JevByMonthInputSchema>;
+
+export type JevByDateRangeInput = z.infer<typeof JevByDateRangeInputSchema>;
+
+export const JevByIdQuerySchema = z.object({
+  includeDeleted: z
+    .stringbool({
+      truthy: ["true"],
+      falsy: ["false"],
+      case: "sensitive",
+      error: "includeDeleted must be true or false.",
+    })
+    .default(false),
+});
+export type JevByIdQuery = z.infer<typeof JevByIdQuerySchema>;
+
+export const JevUserRefSchema = UserRefWithPositionSchema;
+export type JevUserRef = z.infer<typeof JevUserRefSchema>;
+
+export const JevSchema = z.object({
+  id: z.uuid(),
+  journalType: JournalTypeSchema,
+  jevNumber: z.string(),
+  jevDate: z.iso.date(),
+  dvNumber: z.string().nullable(),
+  dvDate: z.iso.date().nullable(),
+  adaNumber: z.string().nullable(),
+  adaDate: z.iso.date().nullable(),
+  checkNumber: z.string().nullable(),
+  checkDate: z.iso.date().nullable(),
+  payeeName: z.string().nullable(),
+  description: z.string(),
+  createdAt: z.coerce.date(),
+  createdBy: JevUserRefSchema,
+  lastUpdatedAt: z.coerce.date(),
+  lastUpdatedBy: JevUserRefSchema,
+  deletedAt: z.coerce.date().nullable(),
+  deletedBy: z.uuid().nullable(),
+  accountingEntries: z.array(AccountingEntrySchema).optional(),
+  supportingDocuments: z.array(SupportingDocumentSchema).optional(),
+});
+export type Jev = z.infer<typeof JevSchema>;
+
+export const JevListItemSchema = z.object({
+  id: z.uuid(),
+  jevNumber: z.string(),
+  journalType: JournalTypeSchema,
+  jevDate: z.iso.date(),
+  description: z.string(),
+});
+export type JevListItem = z.infer<typeof JevListItemSchema>;
+
+const MIN_ACCOUNT_ROWS = 2;
+
+// Strict "YYYY-MM-DD", converted to a Date (Prisma rejects bare date strings).
+const dateOnlyInput = (message: string) =>
+  z.iso.date(message).transform((value) => new Date(value));
+
+const CkdjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
+  documentCode: z.enum(["bur", "po", "inv", "ar", "or"], { error: "Select Document" }),
+});
+
+const CdjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
+  documentCode: z.enum(["bur"], { error: "Select Document" }),
+});
+
+const CrjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
+  documentCode: z.enum(["rcd"], { error: "Select Document" }),
+});
+
+const MsijSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
+  documentCode: z.enum(["ris"], { error: "Select Document" }),
+});
+
+const GjSupportingDocumentSchema = CreateSupportingDocumentInputSchema.extend({
+  documentCode: z.enum(["lr"], { error: "Select Document" }),
+});
+
+const JevBaseSchema = z.object({
+  journalType: JournalTypeSchema,
+  jevNumber: z.string().nonempty("Please enter JEV Number."),
+  jevDate: dateOnlyInput("Select Date"),
+  accountingEntries: z
+    .array(CreateAccountingEntryInputSchema)
+    .min(MIN_ACCOUNT_ROWS, `Enter at least ${MIN_ACCOUNT_ROWS} accounts`),
+  description: z.string().nonempty("Please enter description."),
+});
+
+const CkdjJevSchema = JevBaseSchema.extend({
+  journalType: z.literal("ckdj"),
+  dvNumber: z.string().nonempty("Please enter DV number."),
+  dvDate: dateOnlyInput("Select Date"),
+  payeeName: z.string().nonempty("Please enter Payee name."),
+  checkNumber: z.string().nonempty("Please enter Check number."),
+  checkDate: dateOnlyInput("Select Date"),
+  supportingDocuments: z.array(CkdjSupportingDocumentSchema).optional(),
+});
+
+const CdjJevSchema = JevBaseSchema.extend({
+  journalType: z.literal("cdj"),
+  dvNumber: z.string().nonempty("Please enter DV number."),
+  dvDate: dateOnlyInput("Select Date"),
+  payeeName: z.string().nonempty("Please enter Payee name."),
+  adaNumber: z.string().nonempty("Please enter ADA number."),
+  adaDate: dateOnlyInput("Select Date"),
+  supportingDocuments: z.array(CdjSupportingDocumentSchema).optional(),
+});
+
+const CrjJevSchema = JevBaseSchema.extend({
+  journalType: z.literal("crj"),
+  supportingDocuments: z.array(CrjSupportingDocumentSchema).optional(),
+});
+
+const MsijJevSchema = JevBaseSchema.extend({
+  journalType: z.literal("msij"),
+  supportingDocuments: z.array(MsijSupportingDocumentSchema).optional(),
+});
+
+const GjJevSchema = JevBaseSchema.extend({
+  journalType: z.literal("gj"),
+  payeeName: z.string().optional(),
+  supportingDocuments: z.array(GjSupportingDocumentSchema).optional(),
+});
+
+export const CreateJevInputSchema = z
+  .discriminatedUnion(
+    "journalType",
+    [CkdjJevSchema, CdjJevSchema, CrjJevSchema, MsijJevSchema, GjJevSchema],
+    { error: "Select Journal" },
+  )
+  .superRefine((data, ctx) => {
+    const totalsCents = data.accountingEntries.reduce(
+      (acc, entry) => ({
+        debit: acc.debit + (entry.entryType === "debit" ? toCents(entry.amount ?? 0) : 0),
+        credit:
+          acc.credit + (entry.entryType === "credit" ? toCents(entry.amount ?? 0) : 0),
+      }),
+      { debit: 0, credit: 0 },
+    );
+
+    if (totalsCents.debit !== totalsCents.credit) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["accountingEntries"],
+        message: "Debit and credit must be balanced.",
+      });
+    }
+  });
+export type CreateJevInput = z.infer<typeof CreateJevInputSchema>;
+
+// The full JEV plus the user's own password.
+export const UpdateJevInputSchema = CreateJevInputSchema.and(ConfirmPasswordInputSchema);
+export type UpdateJevInput = z.infer<typeof UpdateJevInputSchema>;

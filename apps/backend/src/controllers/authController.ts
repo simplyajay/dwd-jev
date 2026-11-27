@@ -1,0 +1,26 @@
+import { authService } from "../container.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import type { LoginInput, RefreshTokenInput } from "@dwd-jev/shared";
+import type { Request } from "express";
+
+export const login = asyncHandler(async (req: Request<any, any, LoginInput>, res) => {
+  const { accessToken, refreshToken, user } = await authService.login(req.body);
+  res.success({ accessToken, refreshToken, user }, 200);
+});
+
+export const refresh = asyncHandler(
+  async (req: Request<any, any, RefreshTokenInput>, res) => {
+    const { refreshToken: oldRefreshToken } = req.body;
+    const { accessToken, refreshToken, user } =
+      await authService.refresh(oldRefreshToken);
+    res.success({ accessToken, refreshToken, user }, 200);
+  },
+);
+
+export const logout = asyncHandler(
+  async (req: Request<any, any, RefreshTokenInput>, res) => {
+    const { refreshToken } = req.body;
+    await authService.logout(refreshToken);
+    res.success(null, 200);
+  },
+);

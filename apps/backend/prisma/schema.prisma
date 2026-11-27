@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  administrator
+  user
+
+  @@map("role")
+}
+
+enum Status {
+  awaiting_approval
+  active
+  inactive
+
+  @@map("status")
+}
+
+enum EntryType {
+  debit
+  credit
+
+  @@map("entry_type")
+}
+
+enum JournalType {
+  crj
+  cdj
+  gj
+  ckdj
+  msij
+
+  @@map("journal_type")
+}
+
+enum DocumentCode {
+  po
+  bur
+  or
+  inv
+  ar
+  rcd
+  ris
+  lr
+
+  @@map("document_code")
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+
+  @@map("audit_action")
+}
+
+model User {
+  id              String    @id @default(uuid()) @db.Uuid
+  firstName       String    @map("first_name")
+  middleName      String?   @map("middle_name")
+  lastName        String    @map("last_name")
+  username        String    @unique
+  password        String
+  email           String?   @unique
+  role            Role      @default(user)
+  position        String
+  status          Status    @default(awaiting_approval)
+  isSystemAccount Boolean   @default(false) @map("is_system_account")
+  approvedBy      String?   @map("approved_by") @db.Uuid
+  // Nullable while status is awaiting_approval; set on approval.
+  approvedAt      DateTime? @map("approved_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  // Must equal the access token's ver; bumped on every auth-relevant change.
+  tokenVersion    Int       @default(0) @map("token_version")
+
+  approvedByUser  User?         @relation("UserApprovedBy", fields: [approvedBy], references: [id], onDelete: Restrict)
+  approvedUsers   User[]        @relation("UserApprovedBy")
+  createdJevs     Jev[]         @relation("JevCreatedBy")
+  lastUpdatedJevs Jev[]         @relation("JevLastUpdatedBy")
+  deletedJevs     Jev[]         @relation("JevDeletedBy")
+  jevRevisions    JevRevision[] @relation("JevRevisionUpdatedBy")
+  auditLogs       AuditLog[]    @relation("AuditLogActor")
+  refreshToken    RefreshToken?
+
+  @@map("users")
+}
+
+// One row per user, so logging in elsewhere ends the previous session.
+model RefreshToken {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @map("user_id") @db.Uuid
+  // SHA-256 of the token; the token itself is never stored.
+  tokenHash    String   @unique @map("token_hash")
+  // Must equal users.token_version for the token to be accepted.
+  tokenVersion Int      @map("token_version")
+  expiresAt    DateTime @map("expires_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// Fixed-window counters. Timestamptz because the upsert compares with now().
+model RateLimit {
+  key       String   @id
+  count     Int
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("rate_limits")
+}
+
+// jev/dv/ada/check numbers are unique among non-deleted rows only, via
+// raw-SQL partial indexes (add_jev_unique_document_numbers).
+// Run `pnpm check:indexes` after every migration to confirm they still exist.
+model Jev {
+  id            String      @id @default(uuid()) @db.Uuid
+  journalType   JournalType @map("journal_type")
+  jevNumber     String      @map("jev_number")
+  jevDate       DateTime    @map("jev_date") @db.Date
+  dvNumber      String?     @map("dv_number")
+  dvDate        DateTime?   @map("dv_date") @db.Date
+  adaNumber     String?     @map("ada_number")
+  adaDate       DateTime?   @map("ada_date") @db.Date
+  checkNumber   String?     @map("check_number")
+  checkDate     DateTime?   @map("check_date") @db.Date
+  payeeName     String?     @map("payee_name")
+  description   String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  createdBy     String      @map("created_by") @db.Uuid
+  lastUpdatedAt DateTime    @default(now()) @updatedAt @map("last_updated_at")
+  lastUpdatedBy String      @map("last_updated_by") @db.Uuid
+  deletedAt     DateTime?   @map("deleted_at")
+  deletedBy     String?     @map("deleted_by") @db.Uuid
+
+  createdByUser     User  @relation("JevCreatedBy", fields: [createdBy], references: [id])
+  lastUpdatedByUser User  @relation("JevLastUpdatedBy", fields: [lastUpdatedBy], references: [id])
+  deletedByUser     User? @relation("JevDeletedBy", fields: [deletedBy], references: [id], onDelete: Restrict)
+
+  accountingEntries   AccountingEntry[]
+  supportingDocuments SupportingDocument[]
+  revisions           JevRevision[]
+
+  @@map("journal_entry_voucher")
+}
+
+model JevRevision {
+  id         String   @id @default(uuid()) @db.Uuid
+  jevId      String   @map("jev_id") @db.Uuid
+  // Null on the revision written when the JEV is created.
+  beforeData Json?    @map("before_data")
+  afterData  Json     @map("after_data")
+  updatedBy  String   @map("updated_by") @db.Uuid
+  updatedAt  DateTime @default(dbgenerated("clock_timestamp()")) @map("updated_at")
+
+  jev           Jev  @relation(fields: [jevId], references: [id], onDelete: Cascade)
+  updatedByUser User @relation("JevRevisionUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("jev_revisions")
+}
+
+model AccountingEntry {
+  id          String    @id @default(uuid()) @db.Uuid
+  jevId       String    @map("jev_id") @db.Uuid
+  sortOrder   Int       @map("sort_order")
+  accountCode String    @map("account_code")
+  accountName String    @map("account_name")
+  entryType   EntryType @map("entry_type")
+  amount      BigInt
+
+  jev          Jev           @relation(fields: [jevId], references: [id], onDelete: Cascade)
+  explanations Explanation[]
+
+  @@map("accounting_entries")
+}
+
+model SupportingDocument {
+  id             String       @id @default(uuid()) @db.Uuid
+  jevId          String       @map("jev_id") @db.Uuid
+  sortOrder      Int          @map("sort_order")
+  documentNumber String       @map("document_number")
+  documentCode   DocumentCode @map("document_code")
+  documentName   String       @map("document_name")
+  documentDate   DateTime     @map("document_date") @db.Date
+
+  jev Jev @relation(fields: [jevId], references: [id], onDelete: Cascade)
+
+  @@map("supporting_documents")
+}
+
+model Explanation {
+  id                String    @id @default(uuid()) @db.Uuid
+  accountingEntryId String    @map("accounting_entry_id") @db.Uuid
+  reference         String
+  description       String
+  entryType         EntryType @map("entry_type")
+  amount            BigInt
+
+  accountingEntry AccountingEntry @relation(fields: [accountingEntryId], references: [id], onDelete: Cascade)
+
+  @@map("explanations")
+}
+
+// documentType is a String so new types need no enum migration.
+// documentId has no FK: the revision's id for create/update, the document's
+// id for delete.
+model AuditLog {
+  id           String      @id @default(uuid()) @db.Uuid
+  documentType String      @map("document_type")
+  documentId   String      @map("document_id") @db.Uuid
+  action       AuditAction
+  description  String
+  actorId      String      @map("actor_id") @db.Uuid
+  // clock_timestamp(), not now(): now() is the transaction's start, which
+  // misorders rows written after waiting on a lock.
+  createdAt    DateTime    @default(dbgenerated("clock_timestamp()")) @map("created_at")
+
+  actor User @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt, id])
+  @@index([actorId, createdAt, id])
+  @@index([action, createdAt, id])
+  @@map("audit_logs")
+}
+
+model ChartOfAccounts {
+  id          String  @id @default(uuid()) @db.Uuid
+  accountCode String  @map("account_code")
+  accountName String  @map("account_name")
+  /// GSO inventory code (usually 3 digits); the desktop app filters GSO entries by it.
+  gso         String?
+
+  @@map("chart_of_accounts")
+}
