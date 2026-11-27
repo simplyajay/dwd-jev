@@ -15,6 +15,7 @@ import type {
   SetUserStatusInput,
   UpdateAccountInput,
   UpdateAccountResult,
+  UpdateJevInputSchema,
   UpdateProfileInput,
   UserDetail,
   UserSummary,
@@ -27,8 +28,11 @@ export type JevListRow = JevListItem;
 /** What login and refresh return. */
 export type AuthSession = z.output<typeof AuthSessionSchema>;
 
-/** The create/update body as sent: dates as "YYYY-MM-DD" strings and amounts in pesos. */
+/** The create body as sent: dates as "YYYY-MM-DD" strings and amounts in pesos. */
 export type JevBody = z.input<typeof CreateJevInputSchema>;
+
+/** The update body: the whole JEV plus the user's own password. */
+export type UpdateJevBody = z.input<typeof UpdateJevInputSchema>;
 
 /** Everything the UI needs from the backend. Screens depend only on this. */
 export interface Api {
@@ -64,8 +68,11 @@ export interface Api {
     get(id: string, options?: { includeDeleted?: boolean }): Promise<Jev>;
     /** 409 with a field (e.g. "jevNumber") when a number is taken. */
     create(input: JevBody): Promise<Jev>;
-    /** Replaces the whole JEV. Every save is a new revision, even without changes. */
-    update(id: string, input: JevBody): Promise<Jev>;
+    /**
+     * Replaces the whole JEV; every save is a new revision. 403 with field "password"
+     * for a wrong password (checked before 404).
+     */
+    update(id: string, input: UpdateJevBody): Promise<Jev>;
     /** 403 with field "password" for a wrong password. */
     delete(id: string, input: ConfirmPasswordInput): Promise<void>;
     /** A create or update revision; its id is that audit log's `documentId`. */

@@ -12,4 +12,4 @@ export const api: Api = {
 };
 
 export { ApiError, errorMessage, tooManyRequestsMessage } from "./errors";
-export type { Api, AuthSession, JevBody, JevListRow } from "./types";
+export type { Api, AuthSession, JevBody, JevListRow, UpdateJevBody } from "./types";
